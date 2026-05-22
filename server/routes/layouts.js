@@ -33,7 +33,7 @@ router.get('/', (req, res) => {
   res.json(layouts);
 });
 
-// Phase 2.2h: workspace-aware access. Mirrors content/widget/kiosk helpers.
+// Phase 2.2h: workspace-aware access. Mirrors content helper.
 // Templates (is_template=1) are readable by anyone authenticated; writable
 // only by platform_admin (kept layered with the existing L78/L94 guards).
 function checkLayoutRead(req, res) {

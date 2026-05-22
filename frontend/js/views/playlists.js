@@ -8,7 +8,6 @@ function formatDate(ts) {
 }
 
 function getTypeIcon(item) {
-  if (item.widget_id) return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="2" width="8" height="8" rx="1"/><rect x="2" y="14" width="8" height="8" rx="1"/><rect x="14" y="14" width="8" height="8" rx="1"/></svg>';
   if (item.mime_type && item.mime_type.startsWith('video/')) return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
   return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
 }
@@ -294,8 +293,8 @@ function renderItems(items) {
         }
       </div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:14px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(item.filename || item.widget_name || 'Desconocido')}</div>
-        <div style="font-size:12px;color:var(--text-muted)">${item.widget_id ? 'Widget' : esc(item.mime_type || 'Tipo desconocido')}</div>
+        <div style="font-size:14px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(item.filename || 'Desconocido')}</div>
+        <div style="font-size:12px;color:var(--text-muted)">${esc(item.mime_type || 'Tipo desconocido')}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
         <label style="font-size:12px;color:var(--text-muted)">${'Duración'}</label>
@@ -496,8 +495,7 @@ async function showAddItemModal(playlistId) {
     <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;max-width:560px;width:95vw;max-height:80vh;display:flex;flex-direction:column">
       <h3 style="margin-bottom:16px;color:var(--text-primary)">${'Agregar contenido a la lista'}</h3>
       <div style="display:flex;gap:8px;margin-bottom:12px">
-        <button class="btn btn-primary btn-sm tab-btn active" data-tab="content">${'Contenido'}</button>
-        <button class="btn btn-secondary btn-sm tab-btn" data-tab="widgets">${'Widgets'}</button>
+        <button class="btn btn-primary btn-sm" style="cursor:default;opacity:1">${'Contenido'}</button>
       </div>
       <input type="text" id="addItemSearch" class="input" placeholder="${'Buscar...'}" style="width:100%;margin-bottom:12px">
       <div id="addItemList" style="flex:1;overflow-y:auto;min-height:200px;max-height:400px"></div>
@@ -508,40 +506,33 @@ async function showAddItemModal(playlistId) {
   `;
   document.body.appendChild(modal);
 
-  let activeTab = 'content';
   let allContent = [];
-  let allWidgets = [];
 
   try {
-    [allContent, allWidgets] = await Promise.all([
-      api.getContent(),
-      api.getWidgets ? api.getWidgets() : Promise.resolve([])
-    ]);
+    allContent = await api.getContent();
   } catch (err) {
-    document.getElementById('addItemList').innerHTML = `<div style="color:var(--text-muted);padding:20px;text-align:center">${'Error al cargar las listas: ' + (esc(err.message))}</div>`;
+    document.getElementById('addItemList').innerHTML = `<div style="color:var(--text-muted);padding:20px;text-align:center">${'Error al cargar el contenido: ' + (esc(err.message))}</div>`;
   }
 
   function renderTab() {
     const list = document.getElementById('addItemList');
     const search = (document.getElementById('addItemSearch')?.value || '').toLowerCase();
-    const items = activeTab === 'content' ? allContent : allWidgets;
-    const filtered = items.filter(item => {
+    const filtered = allContent.filter(item => {
       const name = (item.filename || item.name || '').toLowerCase();
       return name.includes(search);
     });
 
     if (!filtered.length) {
-      list.innerHTML = `<div style="color:var(--text-muted);padding:20px;text-align:center">${activeTab === 'content' ? 'No se encontró contenido' : 'No se encontraron widgets'}</div>`;
+      list.innerHTML = `<div style="color:var(--text-muted);padding:20px;text-align:center">${'No se encontró contenido'}</div>`;
       return;
     }
 
     list.innerHTML = filtered.map(item => {
-      const isWidget = activeTab === 'widgets';
       const name = item.filename || item.name || 'Desconocido';
-      const sub = isWidget ? (item.widget_type || 'Widget') : (item.mime_type || '');
+      const sub = (item.mime_type || '');
       const thumb = item.thumbnail_path ? `/api/content/${esc(item.id)}/thumbnail` : null;
       return `
-        <div class="add-item-row" data-id="${esc(item.id)}" data-type="${isWidget ? 'widget' : 'content'}" style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:var(--radius);cursor:pointer;transition:background 0.1s">
+        <div class="add-item-row" data-id="${esc(item.id)}" data-type="content" style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:var(--radius);cursor:pointer;transition:background 0.1s">
           <div style="width:40px;height:30px;border-radius:4px;overflow:hidden;background:var(--bg-input);flex-shrink:0;display:flex;align-items:center;justify-content:center">
             ${thumb ? `<img src="${thumb}" style="width:100%;height:100%;object-fit:cover">` : '<div style="color:var(--text-muted);opacity:0.4"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>'}
           </div>
@@ -549,17 +540,16 @@ async function showAddItemModal(playlistId) {
             <div style="font-size:13px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(name)}</div>
             <div style="font-size:11px;color:var(--text-muted)">${esc(sub)}</div>
           </div>
-          <button class="btn btn-primary btn-sm add-item-btn" data-id="${esc(item.id)}" data-type="${isWidget ? 'widget' : 'content'}">${'Agregar'}</button>
+          <button class="btn btn-primary btn-sm add-item-btn" data-id="${esc(item.id)}" data-type="content">${'Agregar'}</button>
         </div>
       `;
-    }).join('');
+    }).join();
 
     list.querySelectorAll('.add-item-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
         const id = btn.dataset.id;
-        const type = btn.dataset.type;
-        const data = type === 'widget' ? { widget_id: id } : { content_id: id };
+        const data = { content_id: id };
         try {
           btn.disabled = true;
           btn.textContent = 'Agregando...';
@@ -576,18 +566,6 @@ async function showAddItemModal(playlistId) {
       });
     });
   }
-
-  modal.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      activeTab = btn.dataset.tab;
-      modal.querySelectorAll('.tab-btn').forEach(b => {
-        b.classList.toggle('btn-primary', b.dataset.tab === activeTab);
-        b.classList.toggle('btn-secondary', b.dataset.tab !== activeTab);
-        b.classList.toggle('active', b.dataset.tab === activeTab);
-      });
-      renderTab();
-    });
-  });
 
   document.getElementById('addItemSearch').addEventListener('input', renderTab);
 

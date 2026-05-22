@@ -42,17 +42,15 @@ function ensureDevicePlaylist(deviceId, userId) {
   return playlistId;
 }
 
-// Standard item query with joined content/widget info
+// Standard item query with joined content info
 const ITEM_SELECT = `
-  SELECT pi.id, pi.playlist_id, pi.content_id, pi.widget_id, pi.sort_order, pi.duration_sec,
+  SELECT pi.id, pi.playlist_id, pi.content_id, pi.sort_order, pi.duration_sec,
          pi.created_at, pi.updated_at,
-         COALESCE(c.filename, w.name) as filename,
+         c.filename,
          c.mime_type, c.filepath, c.thumbnail_path,
-         c.duration_sec as content_duration, c.file_size, c.remote_url,
-         w.name as widget_name, w.widget_type, w.config as widget_config
+         c.duration_sec as content_duration, c.file_size, c.remote_url
   FROM playlist_items pi
   LEFT JOIN content c ON pi.content_id = c.id
-  LEFT JOIN widgets w ON pi.widget_id = w.id
 `;
 
 // Get assignments (playlist items) for a device
@@ -66,35 +64,23 @@ router.get('/device/:deviceId', (req, res) => {
   res.json(items);
 });
 
-// Add content or widget to device playlist.
-// Phase 2.2j: closes 2 pre-existing cross-tenant leaks:
-//   1. Content gate: today checks content.user_id == caller. A workspace_admin
-//      who happens to own content in another workspace could push it into a
-//      device in this workspace. Now: content must be in device's workspace
-//      (or be a platform-template, workspace_id IS NULL).
-//   2. Widget gate: today checks ONLY existence - any user could attach any
-//      widget UUID to their own device's playlist. Now: widget must be in
-//      device's workspace (or be a platform-template).
+// Add content to device playlist.
+// Phase 2.2j: closes a pre-existing cross-tenant leak:
+//   Content gate: today checks content.user_id == caller. A workspace_admin
+//   who happens to own content in another workspace could push it into a
+//   device in this workspace. Now: content must be in device's workspace
+//   (or be a platform-template, workspace_id IS NULL).
 router.post('/device/:deviceId', (req, res) => {
   const access = checkDeviceAccess(req, res, 'deviceId', true);
   if (!access) return;
-  const { content_id, widget_id, zone_id, duration_sec = 10, sort_order } = req.body;
+  const { content_id, zone_id, duration_sec = 10, sort_order } = req.body;
 
-  if (!content_id && !widget_id) return res.status(400).json({ error: 'content_id or widget_id required' });
+  if (!content_id) return res.status(400).json({ error: 'content_id required' });
 
-  if (content_id) {
-    const content = db.prepare('SELECT id, workspace_id FROM content WHERE id = ?').get(content_id);
-    if (!content) return res.status(404).json({ error: 'Content not found' });
-    if (content.workspace_id && content.workspace_id !== access.device.workspace_id) {
-      return res.status(403).json({ error: 'Content is not in this device\'s workspace' });
-    }
-  }
-  if (widget_id) {
-    const widget = db.prepare('SELECT id, workspace_id FROM widgets WHERE id = ?').get(widget_id);
-    if (!widget) return res.status(404).json({ error: 'Widget not found' });
-    if (widget.workspace_id && widget.workspace_id !== access.device.workspace_id) {
-      return res.status(403).json({ error: 'Widget is not in this device\'s workspace' });
-    }
+  const content = db.prepare('SELECT id, workspace_id FROM content WHERE id = ?').get(content_id);
+  if (!content) return res.status(404).json({ error: 'Content not found' });
+  if (content.workspace_id && content.workspace_id !== access.device.workspace_id) {
+    return res.status(403).json({ error: 'Content is not in this device\'s workspace' });
   }
 
   const playlistId = ensureDevicePlaylist(req.params.deviceId, req.user.id);
@@ -108,9 +94,9 @@ router.post('/device/:deviceId', (req, res) => {
 
   try {
     const result = db.prepare(`
-      INSERT INTO playlist_items (playlist_id, content_id, widget_id, sort_order, duration_sec)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(playlistId, content_id || null, widget_id || null, order, duration_sec);
+      INSERT INTO playlist_items (playlist_id, content_id, sort_order, duration_sec)
+      VALUES (?, ?, ?, ?)
+    `).run(playlistId, content_id, order, duration_sec);
 
     markDraft(playlistId);
 
@@ -230,11 +216,12 @@ router.post('/device/:deviceId/copy-to/:targetDeviceId', (req, res) => {
 
   const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM playlist_items WHERE playlist_id = ?')
     .get(targetPlaylistId).m || 0;
-  const stmt = db.prepare('INSERT INTO playlist_items (playlist_id, content_id, widget_id, sort_order, duration_sec) VALUES (?, ?, ?, ?, ?)');
+  const stmt = db.prepare('INSERT INTO playlist_items (playlist_id, content_id, sort_order, duration_sec) VALUES (?, ?, ?, ?)');
 
   const transaction = db.transaction(() => {
     sourceItems.forEach((a, i) => {
-      stmt.run(targetPlaylistId, a.content_id, a.widget_id, maxOrder + i + 1, a.duration_sec);
+      if (!a.content_id) return;
+      stmt.run(targetPlaylistId, a.content_id, maxOrder + i + 1, a.duration_sec);
     });
   });
   transaction();

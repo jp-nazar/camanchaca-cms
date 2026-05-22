@@ -11,6 +11,39 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at      INTEGER NOT NULL DEFAULT (strftime('%s','now'))
 );
 
+-- ===================== WORKSPACES =====================
+
+CREATE TABLE IF NOT EXISTS workspaces (
+    id              TEXT PRIMARY KEY,
+    name            TEXT NOT NULL DEFAULT '',
+    slug            TEXT UNIQUE,
+    created_by      TEXT REFERENCES users(id),
+    created_at      INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    updated_at      INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+);
+
+CREATE TABLE IF NOT EXISTS workspace_members (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    workspace_id    TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role            TEXT NOT NULL DEFAULT 'workspace_viewer',
+    invited_by      TEXT REFERENCES users(id),
+    joined_at       INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    UNIQUE(workspace_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS workspace_invites (
+    id              TEXT PRIMARY KEY,
+    workspace_id    TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    email           TEXT NOT NULL,
+    role            TEXT NOT NULL DEFAULT 'workspace_viewer',
+    invited_by      TEXT NOT NULL REFERENCES users(id),
+    expires_at      INTEGER NOT NULL,
+    created_at      INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_workspace_members_user ON workspace_members(user_id);
+
 CREATE TABLE IF NOT EXISTS devices (
     id              TEXT PRIMARY KEY,
     user_id         TEXT REFERENCES users(id),
@@ -65,7 +98,6 @@ CREATE TABLE IF NOT EXISTS assignments (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     device_id       TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
     content_id      TEXT REFERENCES content(id) ON DELETE CASCADE,
-    widget_id       TEXT REFERENCES widgets(id) ON DELETE CASCADE,
     zone_id         TEXT,
     sort_order      INTEGER NOT NULL DEFAULT 0,
     duration_sec    INTEGER NOT NULL DEFAULT 10,
@@ -90,7 +122,6 @@ CREATE INDEX IF NOT EXISTS idx_screenshots_device ON screenshots(device_id, capt
 CREATE TABLE IF NOT EXISTS layouts (
     id              TEXT PRIMARY KEY,
     user_id         TEXT REFERENCES users(id),
-    team_id         TEXT,
     name            TEXT NOT NULL,
     width           INTEGER NOT NULL DEFAULT 1920,
     height          INTEGER NOT NULL DEFAULT 1080,
@@ -147,19 +178,6 @@ INSERT OR IGNORE INTO layout_zones (id, layout_id, name, x_percent, y_percent, w
   ('z-q-3',     'tpl-quad',      'Bottom Left',     0, 50, 50, 50, 0, 2),
   ('z-q-4',     'tpl-quad',      'Bottom Right',    50, 50, 50, 50, 0, 3);
 
--- ===================== WIDGETS =====================
-
-CREATE TABLE IF NOT EXISTS widgets (
-    id              TEXT PRIMARY KEY,
-    user_id         TEXT REFERENCES users(id),
-    team_id         TEXT,
-    widget_type     TEXT NOT NULL,
-    name            TEXT NOT NULL,
-    config          TEXT NOT NULL DEFAULT '{}',
-    created_at      INTEGER NOT NULL DEFAULT (strftime('%s','now')),
-    updated_at      INTEGER NOT NULL DEFAULT (strftime('%s','now'))
-);
-
 -- ===================== SCHEDULES =====================
 
 CREATE TABLE IF NOT EXISTS schedules (
@@ -169,7 +187,6 @@ CREATE TABLE IF NOT EXISTS schedules (
     group_id        TEXT REFERENCES device_groups(id) ON DELETE SET NULL,
     zone_id         TEXT REFERENCES layout_zones(id) ON DELETE CASCADE,
     content_id      TEXT REFERENCES content(id) ON DELETE CASCADE,
-    widget_id       TEXT REFERENCES widgets(id) ON DELETE CASCADE,
     layout_id       TEXT REFERENCES layouts(id) ON DELETE SET NULL,
     playlist_id     TEXT REFERENCES playlists(id) ON DELETE SET NULL,
     title           TEXT NOT NULL DEFAULT '',
@@ -194,7 +211,6 @@ CREATE INDEX IF NOT EXISTS idx_schedules_device ON schedules(device_id, enabled)
 CREATE TABLE IF NOT EXISTS video_walls (
     id              TEXT PRIMARY KEY,
     user_id         TEXT NOT NULL REFERENCES users(id),
-    team_id         TEXT,
     name            TEXT NOT NULL,
     grid_cols       INTEGER NOT NULL DEFAULT 2,
     grid_rows       INTEGER NOT NULL DEFAULT 2,
@@ -231,42 +247,12 @@ CREATE TABLE IF NOT EXISTS video_wall_devices (
     UNIQUE(wall_id, grid_col, grid_row)
 );
 
--- ===================== TEAMS =====================
-
-CREATE TABLE IF NOT EXISTS teams (
-    id              TEXT PRIMARY KEY,
-    name            TEXT NOT NULL,
-    owner_id        TEXT NOT NULL REFERENCES users(id),
-    created_at      INTEGER NOT NULL DEFAULT (strftime('%s','now'))
-);
-
-CREATE TABLE IF NOT EXISTS team_members (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    team_id         TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-    user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role            TEXT NOT NULL DEFAULT 'viewer',
-    invited_by      TEXT REFERENCES users(id),
-    joined_at       INTEGER NOT NULL DEFAULT (strftime('%s','now')),
-    UNIQUE(team_id, user_id)
-);
-
-CREATE TABLE IF NOT EXISTS team_invites (
-    id              TEXT PRIMARY KEY,
-    team_id         TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-    email           TEXT NOT NULL,
-    role            TEXT NOT NULL DEFAULT 'viewer',
-    invited_by      TEXT NOT NULL REFERENCES users(id),
-    expires_at      INTEGER NOT NULL,
-    created_at      INTEGER NOT NULL DEFAULT (strftime('%s','now'))
-);
-
 -- ===================== PROOF-OF-PLAY =====================
 
 CREATE TABLE IF NOT EXISTS play_logs (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     device_id       TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
     content_id      TEXT REFERENCES content(id) ON DELETE SET NULL,
-    widget_id       TEXT REFERENCES widgets(id) ON DELETE SET NULL,
     zone_id         TEXT,
     content_name    TEXT NOT NULL DEFAULT '',
     started_at      INTEGER NOT NULL,
@@ -316,7 +302,6 @@ CREATE TABLE IF NOT EXISTS playlist_items (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     playlist_id     TEXT NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
     content_id      TEXT REFERENCES content(id) ON DELETE CASCADE,
-    widget_id       TEXT REFERENCES widgets(id) ON DELETE CASCADE,
     sort_order      INTEGER NOT NULL DEFAULT 0,
     duration_sec    INTEGER NOT NULL DEFAULT 10,
     created_at      INTEGER NOT NULL DEFAULT (strftime('%s','now')),
@@ -332,6 +317,7 @@ CREATE TABLE IF NOT EXISTS activity_log (
     action          TEXT NOT NULL,
     details         TEXT,
     ip_address      TEXT,
+    workspace_id    TEXT REFERENCES workspaces(id),
     created_at      INTEGER NOT NULL DEFAULT (strftime('%s','now'))
 );
 
@@ -339,17 +325,6 @@ CREATE INDEX IF NOT EXISTS idx_activity_log_time ON activity_log(created_at DESC
 CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(user_id, created_at DESC);
 
 -- ===================== EMAIL ALERTS =====================
-
--- ===================== KIOSK PAGES =====================
-
-CREATE TABLE IF NOT EXISTS kiosk_pages (
-    id              TEXT PRIMARY KEY,
-    user_id         TEXT NOT NULL REFERENCES users(id),
-    name            TEXT NOT NULL,
-    config          TEXT NOT NULL DEFAULT '{}',
-    created_at      INTEGER NOT NULL DEFAULT (strftime('%s','now')),
-    updated_at      INTEGER NOT NULL DEFAULT (strftime('%s','now'))
-);
 
 -- ===================== DEVICE STATUS LOG =====================
 
@@ -385,6 +360,24 @@ CREATE TABLE IF NOT EXISTS device_status_log (
     device_id       TEXT NOT NULL,
     status          TEXT NOT NULL,
     timestamp       INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+);
+
+-- ===================== INTEGRATIONS =====================
+
+CREATE TABLE IF NOT EXISTS integrations (
+    id              TEXT PRIMARY KEY,
+    workspace_id    TEXT REFERENCES workspaces(id),
+    name            TEXT NOT NULL,
+    integration_type TEXT NOT NULL,
+    config          TEXT NOT NULL DEFAULT '{}',
+    content_id      TEXT REFERENCES content(id) ON DELETE SET NULL,
+    status          TEXT NOT NULL DEFAULT 'idle',
+    last_error      TEXT,
+    last_fetched_at INTEGER,
+    next_fetch_at   INTEGER,
+    enabled         INTEGER NOT NULL DEFAULT 1,
+    created_at      INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    updated_at      INTEGER NOT NULL DEFAULT (strftime('%s','now'))
 );
 
 -- ===================== SCHEMA MIGRATIONS =====================

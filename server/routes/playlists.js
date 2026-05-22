@@ -66,13 +66,11 @@ function requirePlaylistWrite(req, res, next) {
 // Build the snapshot item list for a playlist (denormalized for device payload)
 function buildSnapshotItems(playlistId) {
   return db.prepare(`
-    SELECT pi.content_id, pi.widget_id, pi.sort_order, pi.duration_sec,
-           COALESCE(c.filename, w.name) as filename, c.mime_type, c.filepath, c.file_size,
-           c.duration_sec as content_duration, c.remote_url,
-           w.name as widget_name, w.widget_type, w.config as widget_config
+    SELECT pi.content_id, pi.sort_order, pi.duration_sec,
+           c.filename, c.mime_type, c.filepath, c.file_size,
+           c.duration_sec as content_duration, c.remote_url
     FROM playlist_items pi
     LEFT JOIN content c ON pi.content_id = c.id
-    LEFT JOIN widgets w ON pi.widget_id = w.id
     WHERE pi.playlist_id = ?
     ORDER BY pi.sort_order ASC
   `).all(playlistId);
@@ -139,13 +137,11 @@ router.post('/', (req, res) => {
 router.get('/:id', requirePlaylistRead, (req, res) => {
   const items = db.prepare(`
     SELECT pi.*,
-           COALESCE(c.filename, w.name) as filename,
+           c.filename,
            c.mime_type, c.filepath, c.thumbnail_path,
-           c.duration_sec as content_duration, c.file_size, c.remote_url,
-           w.name as widget_name, w.widget_type, w.config as widget_config
+           c.duration_sec as content_duration, c.file_size, c.remote_url
     FROM playlist_items pi
     LEFT JOIN content c ON pi.content_id = c.id
-    LEFT JOIN widgets w ON pi.widget_id = w.id
     WHERE pi.playlist_id = ?
     ORDER BY pi.sort_order ASC
   `).all(req.params.id);
@@ -188,13 +184,11 @@ router.post('/:id/publish', requirePlaylistWrite, (req, res) => {
   // with GET /:id (also duplicated in /discard and POST /:id/items/reorder).
   const items = db.prepare(`
     SELECT pi.*,
-           COALESCE(c.filename, w.name) as filename,
+           c.filename,
            c.mime_type, c.filepath, c.thumbnail_path,
-           c.duration_sec as content_duration, c.file_size, c.remote_url,
-           w.name as widget_name, w.widget_type, w.config as widget_config
+           c.duration_sec as content_duration, c.file_size, c.remote_url
     FROM playlist_items pi
     LEFT JOIN content c ON pi.content_id = c.id
-    LEFT JOIN widgets w ON pi.widget_id = w.id
     WHERE pi.playlist_id = ?
     ORDER BY pi.sort_order ASC
   `).all(req.params.id);
@@ -219,14 +213,15 @@ router.post('/:id/discard', requirePlaylistWrite, (req, res) => {
   const transaction = db.transaction(() => {
     // Clear current draft items
     db.prepare('DELETE FROM playlist_items WHERE playlist_id = ?').run(req.params.id);
-    // Re-insert from snapshot, skipping items whose content/widget was deleted
-    const insert = db.prepare('INSERT INTO playlist_items (playlist_id, content_id, widget_id, sort_order, duration_sec) VALUES (?, ?, ?, ?, ?)');
+    // Re-insert from snapshot
+    const insert = db.prepare('INSERT INTO playlist_items (playlist_id, content_id, sort_order, duration_sec) VALUES (?, ?, ?, ?)');
     for (const item of publishedItems) {
+      if (!item.content_id) continue;
       try {
-        insert.run(req.params.id, item.content_id || null, item.widget_id || null, item.sort_order, item.duration_sec);
+        insert.run(req.params.id, item.content_id, item.sort_order, item.duration_sec);
       } catch (e) {
         if (e.message.includes('FOREIGN KEY')) {
-          console.warn(`Discard: skipping snapshot item (content_id=${item.content_id}, widget_id=${item.widget_id}) — referenced entity was deleted`);
+          console.warn(`Discard: skipping snapshot item content_id=${item.content_id} — referenced entity was deleted`);
           continue;
         }
         throw e;
@@ -238,13 +233,11 @@ router.post('/:id/discard', requirePlaylistWrite, (req, res) => {
 
   const items = db.prepare(`
     SELECT pi.*,
-           COALESCE(c.filename, w.name) as filename,
+           c.filename,
            c.mime_type, c.filepath, c.thumbnail_path,
-           c.duration_sec as content_duration, c.file_size, c.remote_url,
-           w.name as widget_name, w.widget_type, w.config as widget_config
+           c.duration_sec as content_duration, c.file_size, c.remote_url
     FROM playlist_items pi
     LEFT JOIN content c ON pi.content_id = c.id
-    LEFT JOIN widgets w ON pi.widget_id = w.id
     WHERE pi.playlist_id = ?
     ORDER BY pi.sort_order ASC
   `).all(req.params.id);
@@ -263,56 +256,42 @@ router.delete('/:id', requirePlaylistWrite, (req, res) => {
 router.get('/:id/items', requirePlaylistRead, (req, res) => {
   const items = db.prepare(`
     SELECT pi.*,
-           COALESCE(c.filename, w.name) as filename,
+           c.filename,
            c.mime_type, c.filepath, c.thumbnail_path,
-           c.duration_sec as content_duration, c.file_size, c.remote_url,
-           w.name as widget_name, w.widget_type, w.config as widget_config
+           c.duration_sec as content_duration, c.file_size, c.remote_url
     FROM playlist_items pi
     LEFT JOIN content c ON pi.content_id = c.id
-    LEFT JOIN widgets w ON pi.widget_id = w.id
     WHERE pi.playlist_id = ?
     ORDER BY pi.sort_order ASC
   `).all(req.params.id);
   res.json(items);
 });
 
-// Phase 2.2k: add item closes 2 pre-existing cross-tenant leaks:
-//   1. Content gate: today checks content.user_id == caller. A workspace_admin
-//      who owns content in another workspace could push it into a playlist
-//      in this workspace. Now: content must be in playlist's workspace (or
-//      be a platform-template, workspace_id IS NULL).
-//   2. Widget gate: today checks ONLY existence - any user could attach any
-//      widget UUID to a playlist they could reach. Now: widget must be in
-//      playlist's workspace (or be a platform-template).
+// Phase 2.2k: add item closes a pre-existing cross-tenant leak:
+//   Content gate: today checks content.user_id == caller. A workspace_admin
+//   who owns content in another workspace could push it into a playlist
+//   in this workspace. Now: content must be in playlist's workspace (or
+//   be a platform-template, workspace_id IS NULL).
 router.post('/:id/items', requirePlaylistWrite, async (req, res) => {
   try {
-    const { content_id, widget_id, sort_order } = req.body;
+    const { content_id, sort_order } = req.body;
     let { duration_sec } = req.body;
 
-    if (!content_id && !widget_id) return res.status(400).json({ error: 'content_id or widget_id required' });
+    if (!content_id) return res.status(400).json({ error: 'content_id required' });
     if (duration_sec !== undefined && duration_sec !== null && (typeof duration_sec !== 'number' || duration_sec < 1)) {
       return res.status(400).json({ error: 'duration_sec must be a positive integer' });
     }
 
-    if (content_id) {
-      const content = db.prepare('SELECT id, workspace_id, duration_sec, mime_type, filepath FROM content WHERE id = ?').get(content_id);
-      if (!content) return res.status(404).json({ error: 'Content not found' });
-      if (content.workspace_id && content.workspace_id !== req.playlist.workspace_id) {
-        return res.status(403).json({ error: 'Content is not in this playlist\'s workspace' });
-      }
-      if (duration_sec === undefined || duration_sec === null) {
-        const contentDur = await probeAndUpdateDuration(content);
-        if (contentDur) duration_sec = Math.ceil(contentDur);
-      }
+    const content = db.prepare('SELECT id, workspace_id, duration_sec, mime_type, filepath FROM content WHERE id = ?').get(content_id);
+    if (!content) return res.status(404).json({ error: 'Content not found' });
+    if (content.workspace_id && content.workspace_id !== req.playlist.workspace_id) {
+      return res.status(403).json({ error: 'Content is not in this playlist\'s workspace' });
+    }
+    if (duration_sec === undefined || duration_sec === null) {
+      const contentDur = await probeAndUpdateDuration(content);
+      if (contentDur) duration_sec = Math.ceil(contentDur);
     }
     if (duration_sec === undefined || duration_sec === null) duration_sec = 10;
-    if (widget_id) {
-      const widget = db.prepare('SELECT id, workspace_id FROM widgets WHERE id = ?').get(widget_id);
-      if (!widget) return res.status(404).json({ error: 'Widget not found' });
-      if (widget.workspace_id && widget.workspace_id !== req.playlist.workspace_id) {
-        return res.status(403).json({ error: 'Widget is not in this playlist\'s workspace' });
-      }
-    }
 
     // Auto-increment sort_order if not specified
     let order = sort_order;
@@ -323,22 +302,20 @@ router.post('/:id/items', requirePlaylistWrite, async (req, res) => {
     }
 
     const result = db.prepare(`
-      INSERT INTO playlist_items (playlist_id, content_id, widget_id, sort_order, duration_sec)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(req.params.id, content_id || null, widget_id || null, order, duration_sec);
+      INSERT INTO playlist_items (playlist_id, content_id, sort_order, duration_sec)
+      VALUES (?, ?, ?, ?)
+    `).run(req.params.id, content_id, order, duration_sec);
 
     // Mark as draft (items changed since last publish)
     markDraft(req.params.id);
 
     const item = db.prepare(`
       SELECT pi.*,
-             COALESCE(c.filename, w.name) as filename,
+             c.filename,
              c.mime_type, c.filepath, c.thumbnail_path,
-             c.duration_sec as content_duration, c.file_size, c.remote_url,
-             w.name as widget_name, w.widget_type, w.config as widget_config
+             c.duration_sec as content_duration, c.file_size, c.remote_url
       FROM playlist_items pi
       LEFT JOIN content c ON pi.content_id = c.id
-      LEFT JOIN widgets w ON pi.widget_id = w.id
       WHERE pi.id = ?
     `).get(result.lastInsertRowid);
 
@@ -377,13 +354,11 @@ router.put('/:id/items/:itemId', requirePlaylistWrite, (req, res) => {
 
   const updated = db.prepare(`
     SELECT pi.*,
-           COALESCE(c.filename, w.name) as filename,
+           c.filename,
            c.mime_type, c.filepath, c.thumbnail_path,
-           c.duration_sec as content_duration, c.file_size, c.remote_url,
-           w.name as widget_name, w.widget_type, w.config as widget_config
+           c.duration_sec as content_duration, c.file_size, c.remote_url
     FROM playlist_items pi
     LEFT JOIN content c ON pi.content_id = c.id
-    LEFT JOIN widgets w ON pi.widget_id = w.id
     WHERE pi.id = ?
   `).get(req.params.itemId);
   res.json(updated);
@@ -417,13 +392,11 @@ router.post('/:id/items/reorder', requirePlaylistWrite, (req, res) => {
 
   const items = db.prepare(`
     SELECT pi.*,
-           COALESCE(c.filename, w.name) as filename,
+           c.filename,
            c.mime_type, c.filepath, c.thumbnail_path,
-           c.duration_sec as content_duration, c.file_size, c.remote_url,
-           w.name as widget_name, w.widget_type, w.config as widget_config
+           c.duration_sec as content_duration, c.file_size, c.remote_url
     FROM playlist_items pi
     LEFT JOIN content c ON pi.content_id = c.id
-    LEFT JOIN widgets w ON pi.widget_id = w.id
     WHERE pi.playlist_id = ?
     ORDER BY pi.sort_order ASC
   `).all(req.params.id);

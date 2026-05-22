@@ -49,11 +49,6 @@ function startHeartbeatChecker(io) {
       DELETE FROM play_logs WHERE started_at < strftime('%s','now') - (90 * 86400)
     `).run();
 
-    // Cleanup: expired team invites
-    db.prepare(`
-      DELETE FROM team_invites WHERE expires_at < strftime('%s','now')
-    `).run();
-
   }, config.heartbeatInterval);
 }
 

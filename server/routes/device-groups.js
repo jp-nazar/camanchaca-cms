@@ -88,16 +88,16 @@ router.delete('/:id', requireGroupWrite, (req, res) => {
     if (groupSchedules.length > 0 && members.length > 0) {
       const insert = db.prepare(`
         INSERT INTO schedules (id, user_id, device_id, group_id, zone_id, content_id,
-          widget_id, layout_id, playlist_id, title, start_time, end_time, timezone,
+          layout_id, playlist_id, title, start_time, end_time, timezone,
           recurrence, recurrence_end, priority, enabled, color, created_at, updated_at)
-        VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       for (const schedule of groupSchedules) {
         for (const member of members) {
           insert.run(
             uuidv4(), schedule.user_id, member.device_id,
-            schedule.zone_id, schedule.content_id, schedule.widget_id,
+            schedule.zone_id, schedule.content_id,
             schedule.layout_id, schedule.playlist_id, schedule.title,
             schedule.start_time, schedule.end_time, schedule.timezone,
             schedule.recurrence, schedule.recurrence_end, schedule.priority,

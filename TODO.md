@@ -11,5 +11,4 @@
 - [ ] Replace `your-server-domain.com` with actual production domain
 - [ ] Configure production `.env` file
 - [ ] Set up SSL certificates
-- [ ] Test Android build with new branding
 - [ ] Verify database migrations work on fresh install

@@ -16,49 +16,16 @@ db.pragma('foreign_keys = ON');
 const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
 db.exec(schema);
 
-// Auto-apply Phase 1 multi-tenancy migration if not yet applied. Without this
-// a self-hoster who pulls latest and restarts hits a crash in
-// migrateFolderWorkspaceIds (queries workspaces table that doesn't exist).
-// Pre-existing data is snapshotted to db/remote_display.pre-migration-<ts>.db
-// before the migration runs - clear restore path on failure. Fresh installs
-// run against empty data (creates tables, no rows to backfill).
+// Multi-tenancy migration marker. Kept for DB compat — no-op on fresh installs.
 function ensureMultitenancyMigration() {
-  let applied = false;
+  // Migration no longer needed — schema.sql has the clean schema.
+  // Mark as applied so fresh installs don't crash looking for deleted script.
   try {
-    applied = !!db.prepare(
-      "SELECT 1 FROM schema_migrations WHERE id = 'phase5_multitenancy_backfill'"
-    ).get();
-  } catch { /* schema_migrations may not exist yet; treat as not applied */ }
-  if (applied) return;
-
-  console.warn('[boot] Multi-tenancy schema not present - applying migration...');
-  const ts = new Date().toISOString().replace(/[:.]/g, '-');
-  const snapshotPath = path.join(dbDir, `remote_display.pre-migration-${ts}.db`);
-  try {
-    db.pragma('wal_checkpoint(TRUNCATE)');
-    fs.copyFileSync(config.dbPath, snapshotPath);
-    console.warn(`[boot] Pre-migration snapshot: ${snapshotPath}`);
-  } catch (e) {
-    console.error(`[boot] Snapshot failed: ${e.message}`);
-    process.exit(1);
-  }
-
-  try {
-    const { runMigration } = require('../../scripts/migrate-multitenancy');
-    runMigration({ db });
-    console.warn('[boot] Migration complete, continuing startup');
-  } catch (e) {
-    console.error(`[boot] Migration FAILED: ${e.message}`);
-    console.error(`[boot] Restore with: cp ${snapshotPath} ${config.dbPath}`);
-    process.exit(1);
-  }
+    db.prepare(
+      "INSERT OR IGNORE INTO schema_migrations (id) VALUES ('phase5_multitenancy_backfill')"
+    ).run();
+  } catch {}
 }
-
-// Note: ensureMultitenancyMigration() is called LATER, after the inline
-// migrations array has added team_id and workspace_id columns. The Phase 1
-// migration script reads team_id from resource tables during its backfill
-// loop, so those columns must exist first. Definition kept here near the
-// top so the auto-migration logic is easy to find when reading the file.
 
 // Migrations for existing databases
 const migrations = [
@@ -129,6 +96,10 @@ const migrations = [
   // Ejection: drop plans and white_labels tables (subscriptions/branding removed)
   "DROP TABLE IF EXISTS plans",
   "DROP TABLE IF EXISTS white_labels",
+  // Ejection: drop kiosk_pages table (kiosk/touchscreen feature removed)
+  "DROP TABLE IF EXISTS kiosk_pages",
+  // Integrations feature
+  "CREATE TABLE IF NOT EXISTS integrations (id TEXT PRIMARY KEY, workspace_id TEXT REFERENCES workspaces(id), name TEXT NOT NULL, integration_type TEXT NOT NULL, config TEXT NOT NULL DEFAULT '{}', content_id TEXT REFERENCES content(id) ON DELETE SET NULL, status TEXT NOT NULL DEFAULT 'idle', last_error TEXT, last_fetched_at INTEGER, next_fetch_at INTEGER, enabled INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')), updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')))",
 ];
 for (const sql of migrations) {
   try { db.exec(sql); } catch (e) { /* already exists */ }
@@ -145,7 +116,6 @@ try {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         device_id TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
         content_id TEXT REFERENCES content(id) ON DELETE CASCADE,
-        widget_id TEXT REFERENCES widgets(id) ON DELETE CASCADE,
         zone_id TEXT,
         sort_order INTEGER NOT NULL DEFAULT 0,
         duration_sec INTEGER NOT NULL DEFAULT 10,
@@ -156,7 +126,7 @@ try {
         muted INTEGER DEFAULT 0,
         created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
       );
-      INSERT INTO assignments_new SELECT id, device_id, content_id, widget_id, zone_id, sort_order, duration_sec, schedule_start, schedule_end, schedule_days, enabled, muted, created_at FROM assignments;
+      INSERT INTO assignments_new SELECT id, device_id, content_id, zone_id, sort_order, duration_sec, schedule_start, schedule_end, schedule_days, enabled, muted, created_at FROM assignments;
       DROP TABLE assignments;
       ALTER TABLE assignments_new RENAME TO assignments;
     `);
@@ -283,13 +253,11 @@ function migratePublishSnapshots() {
   console.log(`Phase 3 migration: snapshotting ${playlists.length} playlist(s) as published...`);
 
   const getItems = db.prepare(`
-    SELECT pi.content_id, pi.widget_id, pi.sort_order, pi.duration_sec,
-           COALESCE(c.filename, w.name) as filename, c.mime_type, c.filepath, c.file_size,
-           c.duration_sec as content_duration, c.remote_url,
-           w.name as widget_name, w.widget_type, w.config as widget_config
+    SELECT pi.content_id, pi.sort_order, pi.duration_sec,
+           c.filename, c.mime_type, c.filepath, c.file_size,
+           c.duration_sec as content_duration, c.remote_url
     FROM playlist_items pi
     LEFT JOIN content c ON pi.content_id = c.id
-    LEFT JOIN widgets w ON pi.widget_id = w.id
     WHERE pi.playlist_id = ?
     ORDER BY pi.sort_order ASC
   `);
@@ -328,7 +296,6 @@ function migrateGroupSchedules() {
         group_id        TEXT REFERENCES device_groups(id) ON DELETE SET NULL,
         zone_id         TEXT REFERENCES layout_zones(id) ON DELETE CASCADE,
         content_id      TEXT REFERENCES content(id) ON DELETE CASCADE,
-        widget_id       TEXT REFERENCES widgets(id) ON DELETE CASCADE,
         layout_id       TEXT REFERENCES layouts(id) ON DELETE SET NULL,
         playlist_id     TEXT REFERENCES playlists(id) ON DELETE SET NULL,
         title           TEXT NOT NULL DEFAULT '',
@@ -345,9 +312,9 @@ function migrateGroupSchedules() {
         CHECK ((device_id IS NOT NULL AND group_id IS NULL) OR (device_id IS NULL AND group_id IS NOT NULL))
       );
 
-      INSERT INTO schedules_new (id, user_id, device_id, zone_id, content_id, widget_id, layout_id, playlist_id,
+      INSERT INTO schedules_new (id, user_id, device_id, zone_id, content_id, layout_id, playlist_id,
         title, start_time, end_time, timezone, recurrence, recurrence_end, priority, enabled, color, created_at, updated_at)
-      SELECT id, user_id, device_id, zone_id, content_id, widget_id, layout_id, playlist_id,
+      SELECT id, user_id, device_id, zone_id, content_id, layout_id, playlist_id,
         title, start_time, end_time, timezone, recurrence, recurrence_end, priority, enabled, color, created_at, updated_at
       FROM schedules;
 
@@ -476,6 +443,120 @@ function backfillActivityLogWorkspace() {
 }
 
 backfillActivityLogWorkspace();
+
+// Clean up vestigial DB schema: remove organizations, teams, team_id columns,
+// trial columns, billing columns. Runs once and marks itself in schema_migrations.
+function cleanupVestigialSchema() {
+  let applied = false;
+  try {
+    applied = !!db.prepare("SELECT 1 FROM schema_migrations WHERE id = 'cleanup-vestigial-schema'").get();
+  } catch {}
+  if (applied) return;
+
+  console.warn('[boot] Cleaning up vestigial DB schema...');
+  db.pragma('foreign_keys = OFF');
+
+  const tx = db.transaction(() => {
+    // --- Rebuild workspaces: drop organization_id, billing_* columns ---
+    const wsCols = db.prepare("PRAGMA table_info(workspaces)").all().map(c => c.name);
+    if (wsCols.includes('organization_id')) {
+      db.exec(`
+        CREATE TABLE workspaces_tmp (
+          id              TEXT PRIMARY KEY,
+          name            TEXT NOT NULL DEFAULT '',
+          slug            TEXT UNIQUE,
+          created_by      TEXT REFERENCES users(id),
+          created_at      INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+          updated_at      INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+        );
+        INSERT INTO workspaces_tmp SELECT id, name, slug, created_by, created_at, updated_at FROM workspaces;
+        DROP TABLE workspaces;
+        ALTER TABLE workspaces_tmp RENAME TO workspaces;
+      `);
+    }
+
+    // --- Rebuild activity_log: drop organization_id, acting_user_id, was_acting_as ---
+    const alCols = db.prepare("PRAGMA table_info(activity_log)").all().map(c => c.name);
+    if (alCols.includes('organization_id')) {
+      db.exec(`
+        CREATE TABLE activity_log_tmp (
+          id              INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id         TEXT REFERENCES users(id),
+          device_id       TEXT,
+          action          TEXT NOT NULL,
+          details         TEXT,
+          ip_address      TEXT,
+          workspace_id    TEXT REFERENCES workspaces(id),
+          created_at      INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+        );
+        INSERT INTO activity_log_tmp (id, user_id, device_id, action, details, ip_address, workspace_id, created_at)
+          SELECT id, user_id, device_id, action, details, ip_address, workspace_id, created_at FROM activity_log;
+        DROP TABLE activity_log;
+        ALTER TABLE activity_log_tmp RENAME TO activity_log;
+      `);
+    }
+
+    // --- Drop team_id from resources (no FK, safe ALTER TABLE) ---
+    for (const table of ['devices', 'content', 'layouts', 'video_walls']) {
+      const cols = db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name);
+      if (cols.includes('team_id')) {
+        db.exec(`ALTER TABLE ${table} DROP COLUMN team_id`);
+      }
+    }
+
+    // --- Drop trial columns from users ---
+    const userCols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+    if (userCols.includes('trial_started')) {
+      db.exec('ALTER TABLE users DROP COLUMN trial_started');
+    }
+    if (userCols.includes('trial_plan')) {
+      db.exec('ALTER TABLE users DROP COLUMN trial_plan');
+    }
+
+    // --- Drop vestigial tables ---
+    for (const table of ['team_invites', 'team_members', 'teams', 'organization_members', 'organizations']) {
+      db.exec(`DROP TABLE IF EXISTS ${table}`);
+    }
+
+    db.prepare("INSERT OR IGNORE INTO schema_migrations (id) VALUES ('cleanup-vestigial-schema')").run();
+  });
+
+  tx();
+  db.pragma('foreign_keys = ON');
+  console.warn('[boot] Vestigial schema cleanup complete.');
+}
+
+cleanupVestigialSchema();
+
+// Drop widgets table and widget_id columns (feature removed).
+function removeVestigialWidgets() {
+  let applied = false;
+  try {
+    applied = !!db.prepare("SELECT 1 FROM schema_migrations WHERE id = 'remove-vestigial-widgets'").get();
+  } catch {}
+  if (applied) return;
+
+  console.warn('[boot] Removing vestigial widgets schema...');
+  db.pragma('foreign_keys = OFF');
+
+  const tx = db.transaction(() => {
+    // Drop widget_id columns from referencing tables
+    for (const table of ['assignments', 'playlist_items', 'schedules', 'play_logs']) {
+      const cols = db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name);
+      if (cols.includes('widget_id')) {
+        db.exec(`ALTER TABLE ${table} DROP COLUMN widget_id`);
+      }
+    }
+    db.exec('DROP TABLE IF EXISTS widgets');
+    db.prepare("INSERT OR IGNORE INTO schema_migrations (id) VALUES ('remove-vestigial-widgets')").run();
+  });
+
+  tx();
+  db.pragma('foreign_keys = ON');
+  console.warn('[boot] Widgets schema cleanup complete.');
+}
+
+removeVestigialWidgets();
 
 // Prune old telemetry (keep last 24h worth at 15s intervals = ~5760, cap at 6000)
 function pruneTelemetry(deviceId) {

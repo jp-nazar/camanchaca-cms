@@ -133,7 +133,7 @@ async function loadDevice(deviceId, activeTab = null) {
 
       <div class="tabs">
         <div class="tab active" data-tab="nowplaying">${'Reproducción actual'} <span class="help-tip" data-tip="${'Captura en vivo de lo que se muestra ahora en este dispositivo.'}">?</span></div>
-        <div class="tab" data-tab="playlist">${'Lista'} <span class="help-tip" data-tip="${'Contenido asignado a este dispositivo. Arrastra para reordenar. Agrega medios, widgets o páginas de kiosco.'}">?</span></div>
+        <div class="tab" data-tab="playlist">${'Lista'} <span class="help-tip" data-tip="${'Contenido asignado a este dispositivo. Arrastra para reordenar. Agrega medios.'}">?</span></div>
         <div class="tab" data-tab="info">${'Información del dispositivo'} <span class="help-tip" data-tip="${'Telemetría de hardware, orientación, notas y controles del dispositivo.'}">?</span></div>
         <div class="tab" data-tab="remote">${'Control remoto'} <span class="help-tip" data-tip="${'Visualiza la pantalla del dispositivo en tiempo real y envía pulsaciones. Funciona en la APK de Android y el reproductor web.'}">?</span></div>
       </div>
@@ -481,11 +481,7 @@ function renderPlaylist(assignments) {
           <line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/>
         </svg>
       </div>
-      ${a.widget_id && !a.content_id
-        ? `<div class="playlist-item-thumb" style="display:flex;align-items:center;justify-content:center;font-size:20px">
-            ${{clock:'&#128339;',weather:'&#9925;',rss:'&#128240;',text:'&#128221;',webpage:'&#127760;',social:'&#128172;'}[a.widget_type] || '&#9881;'}
-          </div>`
-        : a.thumbnail_path
+      ${a.thumbnail_path
           ? `<img class="playlist-item-thumb" src="/api/content/${a.content_id}/thumbnail" alt="">`
           : `<div class="playlist-item-thumb" style="display:flex;align-items:center;justify-content:center">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -494,9 +490,9 @@ function renderPlaylist(assignments) {
             </div>`
       }
       <div class="playlist-item-info">
-        <div class="playlist-item-name">${esc(a.filename || a.widget_name || 'Desconocido')}</div>
+        <div class="playlist-item-name">${esc(a.filename || 'Desconocido')}</div>
         <div class="playlist-item-meta">
-          ${a.widget_id && !a.content_id ? 'Widget (' + (a.widget_type || 'custom') + ')' : a.mime_type === 'video/youtube' ? 'YouTube' : a.mime_type?.startsWith('video/') ? 'Video' : 'Imagen'}
+          ${a.mime_type === 'video/youtube' ? 'YouTube' : a.mime_type?.startsWith('video/') ? 'Video' : 'Imagen'}
           ${a.zone_id ? ` &middot; <span style="color:var(--accent)">${'Zona: ' + a.zone_id.slice(0, 8)}</span>` : ''}
           ${a.content_duration ? ` &middot; ${Math.floor(a.content_duration / 60)}:${String(Math.floor(a.content_duration % 60)).padStart(2, '0')}` : ''}
           ${!a.content_duration && !a.mime_type?.startsWith('video/') && a.duration_sec ? ` &middot; ${a.duration_sec}s` : ''}
@@ -878,11 +874,7 @@ async function setupPlaylistActions(device) {
     const headers = { Authorization: `Bearer ${token}` };
 
     try {
-      const [content, widgets, kioskPages] = await Promise.all([
-        api.getContent(),
-        fetch('/api/widgets', { headers }).then(r => r.json()),
-        fetch('/api/kiosk', { headers }).then(r => r.json()),
-      ]);
+      const content = await api.getContent();
 
       // Get layout zones if device has a layout assigned
       let zones = [];
@@ -893,8 +885,8 @@ async function setupPlaylistActions(device) {
         } catch {}
       }
 
-      if (!content.length && !widgets.length && !kioskPages.length) {
-        showToast('Aún no hay contenido, widgets ni páginas de kiosco. ¡Crea algo primero!', 'error');
+      if (!content.length) {
+        showToast('Aún no hay contenido. ¡Sube algo primero!', 'error');
         return;
       }
 
@@ -921,15 +913,11 @@ async function setupPlaylistActions(device) {
             </div>
             ` : ''}
             <div class="form-group">
-              <label>${'Duración (segundos, para imágenes/widgets)'}</label>
+              <label>${'Duración (segundos, para imágenes)'}</label>
               <input type="number" id="assignDuration" class="input" value="10" min="1" max="3600">
             </div>
-            <!-- Tabs -->
-            <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:12px">
-              <div class="assign-tab active" data-tab="media" style="padding:8px 16px;font-size:13px;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent)">${'Medios (' + (content.length) + ')'}</div>
-              <div class="assign-tab" data-tab="widgets" style="padding:8px 16px;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-secondary)">${'Widgets (' + (widgets.length) + ')'}</div>
-              <div class="assign-tab" data-tab="kiosk" style="padding:8px 16px;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-secondary)">${'Kiosco (' + (kioskPages.length) + ')'}</div>
-            </div>
+            <!-- Media grid heading -->
+            <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">${'Medios (' + (content.length) + ')'}</div>
             <!-- Media grid -->
             <div class="assign-content-grid" id="assignMedia">
               ${content.map(c => `
@@ -948,28 +936,6 @@ async function setupPlaylistActions(device) {
                 </div>
               `).join('') || `<p style="color:var(--text-muted);padding:16px;text-align:center">${'Aún no se ha subido ningún medio'}</p>`}
             </div>
-            <!-- Widgets grid -->
-            <div class="assign-content-grid" id="assignWidgets" style="display:none">
-              ${widgets.map(w => {
-                const icons = {clock:'&#128339;',weather:'&#9925;',rss:'&#128240;',text:'&#128221;',webpage:'&#127760;',social:'&#128172;'};
-                return `
-                <div class="assign-content-item" data-content-id="${w.id}" data-type="widget">
-                  <div style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:var(--bg-primary);font-size:32px">
-                    ${icons[w.widget_type] || '&#9881;'}
-                  </div>
-                  <div class="assign-content-item-name">${w.name}</div>
-                </div>`;
-              }).join('') || `<p style="color:var(--text-muted);padding:16px;text-align:center">${'Aún no hay widgets creados.'} <a href="#/widgets" style="color:var(--accent)">${'Crea uno'}</a></p>`}
-            </div>
-            <!-- Kiosk grid -->
-            <div class="assign-content-grid" id="assignKiosk" style="display:none">
-              ${kioskPages.map(k => `
-                <div class="assign-content-item" data-content-id="${k.id}" data-type="kiosk">
-                  <div style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:var(--bg-primary);font-size:32px">&#128433;</div>
-                  <div class="assign-content-item-name">${k.name}</div>
-                </div>
-              `).join('') || `<p style="color:var(--text-muted);padding:16px;text-align:center">${'Aún no hay páginas de kiosco.'} <a href="#/kiosk" style="color:var(--accent)">${'Crea uno'}</a></p>`}
-            </div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" id="cancelAssign">${'Cancelar'}</button>
@@ -979,16 +945,7 @@ async function setupPlaylistActions(device) {
       `;
       document.body.appendChild(modal);
 
-      // Tab switching
-      modal.querySelectorAll('.assign-tab').forEach(tab => {
-        tab.onclick = () => {
-          modal.querySelectorAll('.assign-tab').forEach(t => { t.style.borderBottomColor = 'transparent'; t.style.color = 'var(--text-secondary)'; });
-          tab.style.borderBottomColor = 'var(--accent)'; tab.style.color = 'var(--accent)';
-          document.getElementById('assignMedia').style.display = tab.dataset.tab === 'media' ? '' : 'none';
-          document.getElementById('assignWidgets').style.display = tab.dataset.tab === 'widgets' ? '' : 'none';
-          document.getElementById('assignKiosk').style.display = tab.dataset.tab === 'kiosk' ? '' : 'none';
-        };
-      });
+      // Single-tab view — no tab switching needed (media only)
 
       let selectedId = null;
       let selectedType = null;
@@ -1011,21 +968,7 @@ async function setupPlaylistActions(device) {
         const duration = parseInt(modal.querySelector('#assignDuration').value) || 10;
         const zoneId = modal.querySelector('#assignZone')?.value || null;
         try {
-          if (selectedType === 'content') {
-            await api.addAssignment(device.id, { content_id: selectedId, duration_sec: duration, zone_id: zoneId });
-          } else if (selectedType === 'widget') {
-            await api.addAssignment(device.id, { widget_id: selectedId, duration_sec: duration, zone_id: zoneId });
-          } else if (selectedType === 'kiosk') {
-            // For kiosk pages, create a webpage widget pointing to the kiosk render URL
-            const serverUrl = window.location.origin;
-            const wRes = await fetch('/api/widgets', {
-              method: 'POST',
-              headers: { ...headers, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ widget_type: 'webpage', name: 'Kiosco: ' + (kioskPages.find(k => k.id === selectedId)?.name || 'Page'), config: { url: `${serverUrl}/api/kiosk/${selectedId}/render` } })
-            });
-            const widget = await wRes.json();
-            await api.addAssignment(device.id, { widget_id: widget.id, duration_sec: 0 });
-          }
+          await api.addAssignment(device.id, { content_id: selectedId, duration_sec: duration, zone_id: zoneId });
           modal.remove();
           showToast('Agregado a la lista', 'success');
           loadDevice(device.id, 'playlist');

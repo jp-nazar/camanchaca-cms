@@ -898,8 +898,8 @@
           <div style="text-align:center;max-width:500px">
             <div style="font-size:64px;margin-bottom:16px">&#9888;</div>
             <h2 style="color:#f59e0b;margin-bottom:8px">${data.message || 'Account Suspended'}</h2>
-            <p style="color:#94a3b8;font-size:16px;margin-bottom:24px">${data.detail || 'Please upgrade your plan.'}</p>
-            <p style="color:#64748b;font-size:13px">Visit your dashboard to manage your subscription</p>
+            <p style="color:#94a3b8;font-size:16px;margin-bottom:24px">${data.detail || 'Cuenta suspendida'}</p>
+            <p style="color:#64748b;font-size:13px">Contacta al administrador del sistema</p>
           </div>
         `;
         return;
@@ -907,7 +907,7 @@
 
       const newItems = data.assignments || [];
       // Build fingerprint from id + url + filename to detect any content change
-      const fingerprint = (items) => items.map(a => `${a.content_id || ''}|${a.widget_id || ''}|${a.remote_url || ''}|${a.filepath || ''}|${a.filename || ''}`).join(',');
+      const fingerprint = (items) => items.map(a => `${a.content_id || ''}|${a.remote_url || ''}|${a.filepath || ''}|${a.filename || ''}`).join(',');
       const newFp = fingerprint(newItems);
       const oldFp = fingerprint(playlist);
 
@@ -948,7 +948,7 @@
 
       console.log('Playlist changed, updating');
       // Capture old state BEFORE mutating so continuity logic can find what was playing.
-      const identityOf = (x) => x ? `${x.content_id || ''}|${x.widget_id || ''}|${x.remote_url || ''}|${x.filepath || ''}` : '';
+      const identityOf = (x) => x ? `${x.content_id || ''}|${x.remote_url || ''}|${x.filepath || ''}` : '';
       const oldPlaylist = playlist;
       const oldAnchorIdx = currentIndex;
       const oldAnchorId = identityOf(oldPlaylist[oldAnchorIdx]);
@@ -1210,7 +1210,6 @@
       // Defense in depth: bail to waiting state on missing/malformed item rather
       // than fall through every branch and leave a blank container.
       const hasRenderableType = item && (
-        item.widget_id ||
         item.mime_type === 'video/youtube' ||
         (typeof item.mime_type === 'string' && (item.mime_type.startsWith('video/') || item.mime_type.startsWith('image/')))
       );
@@ -1316,13 +1315,6 @@
           mount.appendChild(img);
           // Leader / single screen drives image advance; follower waits for sync
           if (!isFollower) advanceTimer = setTimeout(nextItem, (item.duration_sec || 10) * 1000);
-        } else if (item.widget_id) {
-          const iframe = document.createElement('iframe');
-          iframe.src = `${serverUrl}/api/widgets/${item.widget_id}/render`;
-          iframe.style.cssText = 'width:100%;height:100%;border:none;background:#000';
-          iframe.allow = 'autoplay; fullscreen';
-          mount.appendChild(iframe);
-          if (!isFollower) advanceTimer = setTimeout(nextItem, (item.duration_sec || 30) * 1000);
         }
       }
     }
@@ -1343,11 +1335,7 @@
 
         const isYoutubeZone = assignment.mime_type === 'video/youtube';
 
-        if (zone.zone_type === 'widget' && assignment.widget_id) {
-          const iframe = document.createElement('iframe');
-          iframe.src = `${config.serverUrl}/api/widgets/${assignment.widget_id}/render`;
-          div.appendChild(iframe);
-        } else if (isYoutubeZone) {
+        if (isYoutubeZone) {
           createYoutubeEmbed(src, assignment, div);
         } else if (isVideo) {
           const video = document.createElement('video');

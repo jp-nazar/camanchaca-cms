@@ -3,15 +3,11 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const { db } = require('../db/database');
-const { generateToken, requireAuth, requireAdmin, requireSuperAdmin, PLATFORM_ROLES } = require('../middleware/auth');
+const { generateToken, requireAuth, requireAdmin, requireSuperAdmin } = require('../middleware/auth');
 const { resolveTenancy } = require('../lib/tenancy');
 const { logActivity, getClientIp } = require('../services/activity');
 const config = require('../config');
 
-// Phase 2.1: find or create the user's default org+workspace. Returns the
-// workspace_id to embed in the JWT. Idempotent: if the user already has
-// memberships (e.g. migrated from Phase 1), returns the first one without
-// creating anything.
 function ensureDefaultOrgForUser(user) {
   const existing = db.prepare(`
     SELECT w.id FROM workspaces w
@@ -21,18 +17,9 @@ function ensureDefaultOrgForUser(user) {
   `).get(user.id);
   if (existing) return existing.id;
 
-  // No memberships -> mint a fresh org and Default workspace owned by user.
-  const orgId = uuidv4();
   const wsId  = uuidv4();
-  // Single organization "camanchaca" for all users
-  const orgName = 'camanchaca';
   const tx = db.transaction(() => {
-    db.prepare(`INSERT INTO organizations (
-      id, name, owner_user_id
-    ) VALUES (?, ?, ?)`).run(
-      orgId, orgName, user.id
-    );
-    db.prepare(`INSERT INTO workspaces (id, organization_id, name, created_by) VALUES (?, ?, 'Default', ?)`).run(wsId, orgId, user.id);
+    db.prepare(`INSERT INTO workspaces (id, name, created_by) VALUES (?, 'Default', ?)`).run(wsId, user.id);
     db.prepare(`INSERT INTO workspace_members (workspace_id, user_id, role) VALUES (?, ?, 'workspace_admin')`).run(wsId, user.id);
   });
   tx();
@@ -130,7 +117,7 @@ router.post('/login', (req, res) => {
 
 // Create a new user (admin only). Users are always local auth.
 router.post('/admin/users', requireAuth, requireAdmin, (req, res) => {
-  const { email, name, password, role } = req.body;
+  const { email, name, password, role, workspace_id } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
   if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
 
@@ -153,14 +140,17 @@ router.post('/admin/users', requireAuth, requireAdmin, (req, res) => {
 
   const user = db.prepare('SELECT id, email, name, role, auth_provider, avatar_url FROM users WHERE id = ?').get(id);
 
-  // Auto-assign to caller's workspace if they have one
-  const callerWorkspace = db.prepare(
-    'SELECT workspace_id FROM workspace_members WHERE user_id = ? ORDER BY joined_at ASC LIMIT 1'
-  ).get(req.user.id);
+  // Assign to specified workspace, or fall back to caller's workspace
+  const targetWsId = workspace_id || (() => {
+    const cw = db.prepare('SELECT workspace_id FROM workspace_members WHERE user_id = ? ORDER BY joined_at ASC LIMIT 1').get(req.user.id);
+    return cw ? cw.workspace_id : null;
+  })();
 
-  if (callerWorkspace) {
-    db.prepare('INSERT INTO workspace_members (workspace_id, user_id, role) VALUES (?, ?, ?)')
-      .run(callerWorkspace.workspace_id, id, userRole === 'platform_admin' ? 'workspace_admin' : userRole);
+  if (targetWsId) {
+    const ws = db.prepare('SELECT id FROM workspaces WHERE id = ?').get(targetWsId);
+    if (!ws) return res.status(400).json({ error: 'Workspace not found' });
+    const memberRole = userRole === 'platform_admin' ? 'workspace_admin' : userRole;
+    db.prepare('INSERT OR IGNORE INTO workspace_members (workspace_id, user_id, role) VALUES (?, ?, ?)').run(targetWsId, id, memberRole);
   }
 
   res.status(201).json({ user });
@@ -169,9 +159,6 @@ router.post('/admin/users', requireAuth, requireAdmin, (req, res) => {
 // ==================== User Management ====================
 
 // Get current user + tenancy context.
-// Phase 2.1: response shape extended with current_workspace, current_organization,
-// roles, and the list of accessible workspaces. Legacy fields (user object at
-// the top level) are preserved so existing frontend code continues to work.
 router.get('/me', requireAuth, resolveTenancy, (req, res) => {
   // Platform admins see every workspace in the system (via the LEFT JOIN they
   // still get their own workspace_role for direct memberships; NULL elsewhere,
@@ -192,49 +179,34 @@ router.get('/me', requireAuth, resolveTenancy, (req, res) => {
   const isPlatformAdmin = req.user.role === 'platform_admin' || req.user.role === 'superadmin';
   const accessible = isPlatformAdmin
     ? db.prepare(`
-        SELECT w.id, w.name, w.organization_id, o.name AS organization_name,
-               wm.role AS workspace_role, om.role AS org_role,
+        SELECT w.id, w.name,
+               wm.role AS workspace_role,
                (SELECT COUNT(*) FROM devices WHERE workspace_id = w.id) AS device_count
         FROM workspaces w
-        JOIN organizations o ON o.id = w.organization_id
         LEFT JOIN workspace_members wm ON wm.workspace_id = w.id AND wm.user_id = ?
-        LEFT JOIN organization_members om ON om.organization_id = w.organization_id AND om.user_id = ?
-        ORDER BY o.name, w.name
-      `).all(req.user.id, req.user.id)
+        ORDER BY w.name
+      `).all(req.user.id)
     : db.prepare(`
-        SELECT w.id, w.name, w.organization_id, o.name AS organization_name,
-               wm.role AS workspace_role, om.role AS org_role,
+        SELECT w.id, w.name,
+               wm.role AS workspace_role,
                (SELECT COUNT(*) FROM devices WHERE workspace_id = w.id) AS device_count
         FROM workspace_members wm
         JOIN workspaces w ON w.id = wm.workspace_id
-        JOIN organizations o ON o.id = w.organization_id
-        LEFT JOIN organization_members om ON om.organization_id = w.organization_id AND om.user_id = ?
         WHERE wm.user_id = ?
-        ORDER BY o.name, w.name
-      `).all(req.user.id, req.user.id);
+        ORDER BY w.name
+      `).all(req.user.id);
 
-  // Compute can_admin per workspace. Mirrors canAdminWorkspace() in lib/permissions.js
-  // but uses already-joined org_role to avoid another N+1 query per workspace.
+  // Compute can_admin per workspace
   for (const w of accessible) {
-    w.can_admin = isPlatformAdmin
-      || w.org_role === 'org_owner' || w.org_role === 'org_admin'
-      || w.workspace_role === 'workspace_admin';
-    delete w.org_role; // internal-only; don't leak to client
+    w.can_admin = isPlatformAdmin || w.workspace_role === 'workspace_admin';
   }
-
-  const currentOrg = req.organizationId
-    ? db.prepare('SELECT id, name FROM organizations WHERE id = ?').get(req.organizationId)
-    : null;
 
   res.json({
     ...req.user,
     current_workspace_id: req.workspaceId,
-    current_workspace: req.workspace ? { id: req.workspace.id, name: req.workspace.name, organization_id: req.workspace.organization_id } : null,
-    current_organization: currentOrg,
+    current_workspace: req.workspace ? { id: req.workspace.id, name: req.workspace.name } : null,
     current_workspace_role: req.workspaceRole,
-    current_org_role: req.orgRole,
     is_platform_admin: req.isPlatformAdmin,
-    acting_as: req.actingAs,
     accessible_workspaces: accessible,
   });
 });
@@ -251,12 +223,7 @@ router.post('/switch-workspace', requireAuth, (req, res) => {
 
   const isPlatformAdmin = req.user.role === 'platform_admin' || req.user.role === 'superadmin';
   const wsMember = db.prepare('SELECT 1 FROM workspace_members WHERE workspace_id = ? AND user_id = ?').get(ws.id, req.user.id);
-  const orgMember = db.prepare(`
-    SELECT role FROM organization_members WHERE organization_id = ? AND user_id = ?
-  `).get(ws.organization_id, req.user.id);
-  const canAct = isPlatformAdmin
-    || !!wsMember
-    || (orgMember && (orgMember.role === 'org_owner' || orgMember.role === 'org_admin'));
+  const canAct = isPlatformAdmin || !!wsMember;
 
   if (!canAct) return res.status(403).json({ error: 'Access denied to that workspace' });
 
@@ -295,25 +262,13 @@ router.put('/me', requireAuth, (req, res) => {
   res.json(user);
 });
 
-// List users - platform admins see all, admins see team members only
-router.get('/users', requireAuth, requireAdmin, (req, res) => {
-  let users;
-  if (PLATFORM_ROLES.includes(req.user.role)) {
-    users = db.prepare('SELECT id, email, name, role, auth_provider, avatar_url, created_at, last_login FROM users ORDER BY created_at ASC').all();
-  } else {
-    // Admin sees themselves + users in their teams
-    users = db.prepare(`
-      SELECT DISTINCT u.id, u.email, u.name, u.role, u.auth_provider, u.avatar_url, u.created_at, u.last_login
-      FROM users u
-      LEFT JOIN team_members tm ON u.id = tm.user_id
-      WHERE u.id = ? OR tm.team_id IN (SELECT team_id FROM team_members WHERE user_id = ?)
-      ORDER BY u.created_at ASC
-    `).all(req.user.id, req.user.id);
-  }
+// List users - platform admin only
+router.get('/users', requireAuth, requireSuperAdmin, (req, res) => {
+  let users = db.prepare('SELECT id, email, name, role, auth_provider, avatar_url, created_at, last_login FROM users ORDER BY created_at ASC').all();
 
   // Include workspace memberships for each user
   const getWorkspaces = db.prepare(`
-    SELECT w.name, wm.role as workspace_role
+    SELECT w.id, w.name, wm.role as workspace_role
     FROM workspaces w
     JOIN workspace_members wm ON wm.workspace_id = w.id
     WHERE wm.user_id = ?
@@ -335,20 +290,32 @@ router.delete('/users/:id', requireAuth, requireSuperAdmin, (req, res) => {
   res.json({ success: true });
 });
 
-// Update user role (superadmin only)
+// Update user system role (platform admin only)
 router.put('/users/:id/role', requireAuth, requireSuperAdmin, (req, res) => {
   const { role } = req.body;
-  if (!['user', 'admin', 'superadmin'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
-  if (req.params.id === req.user.id && role !== 'superadmin') return res.status(400).json({ error: 'Cannot demote yourself' });
+  const validRoles = ['user', 'workspace_editor', 'workspace_admin', 'platform_admin'];
+  if (!validRoles.includes(role)) return res.status(400).json({ error: 'Invalid role' });
+  if (req.params.id === req.user.id && role !== 'platform_admin') return res.status(400).json({ error: 'Cannot demote yourself' });
   db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, req.params.id);
   res.json({ success: true });
 });
 
-// Admin password reset for another user.
-// Superadmins: can reset any local user. Admins: can reset members of teams
-// they own (and never a superadmin). Self-reset routes through PUT /me with
-// current_password — this endpoint is the override path.
-router.put('/users/:id/password', requireAuth, requireAdmin, (req, res) => {
+// Update user workspace membership role (platform admin only)
+router.put('/users/:id/workspace-role', requireAuth, requireSuperAdmin, (req, res) => {
+  const { workspace_id, role } = req.body;
+  if (!workspace_id) return res.status(400).json({ error: 'workspace_id required' });
+  const validRoles = ['workspace_editor', 'workspace_admin', 'workspace_viewer'];
+  if (!validRoles.includes(role)) return res.status(400).json({ error: 'Invalid workspace role' });
+  const ws = db.prepare('SELECT id FROM workspaces WHERE id = ?').get(workspace_id);
+  if (!ws) return res.status(404).json({ error: 'Workspace not found' });
+  const member = db.prepare('SELECT * FROM workspace_members WHERE workspace_id = ? AND user_id = ?').get(workspace_id, req.params.id);
+  if (!member) return res.status(404).json({ error: 'User is not a member of this workspace' });
+  db.prepare('UPDATE workspace_members SET role = ? WHERE workspace_id = ? AND user_id = ?').run(role, workspace_id, req.params.id);
+  res.json({ success: true });
+});
+
+// Admin password reset for another user (platform admin only)
+router.put('/users/:id/password', requireAuth, requireSuperAdmin, (req, res) => {
   const { password } = req.body;
   if (!password || password.length < 8) {
     return res.status(400).json({ error: 'Password must be at least 8 characters' });
@@ -360,25 +327,6 @@ router.put('/users/:id/password', requireAuth, requireAdmin, (req, res) => {
   if (!target) return res.status(404).json({ error: 'User not found' });
   if (target.auth_provider !== 'local') {
     return res.status(400).json({ error: `User signs in via ${target.auth_provider} — password reset does not apply` });
-  }
-
-  if (!PLATFORM_ROLES.includes(req.user.role)) {
-    // Admin path: must own a team that includes the target, and target must
-    // be a regular user (cannot reset another admin's or a platform_admin's
-    // password — that would be a lateral-takeover vector).
-    if (target.role !== 'user') {
-      return res.status(403).json({ error: 'Admins can only reset passwords for regular users' });
-    }
-    const sharedOwnedTeam = db.prepare(`
-      SELECT 1 FROM team_members tm_admin
-      JOIN team_members tm_target ON tm_admin.team_id = tm_target.team_id
-      WHERE tm_admin.user_id = ? AND tm_admin.role = 'owner'
-        AND tm_target.user_id = ?
-      LIMIT 1
-    `).get(req.user.id, req.params.id);
-    if (!sharedOwnedTeam) {
-      return res.status(403).json({ error: 'You can only reset passwords for members of teams you own' });
-    }
   }
 
   const hash = bcrypt.hashSync(password, 10);
@@ -396,11 +344,6 @@ router.put('/users/:id/password', requireAuth, requireAdmin, (req, res) => {
 router.get('/config', (req, res) => {
   const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
   res.json({
-    googleEnabled: false,
-    googleClientId: null,
-    microsoftEnabled: false,
-    microsoftClientId: null,
-    microsoftTenantId: null,
     localEnabled: true,
     needsSetup: userCount === 0,
     registration_enabled: userCount === 0,

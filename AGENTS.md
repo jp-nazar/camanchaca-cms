@@ -9,9 +9,10 @@
 
 ```bash
 cd server
+nvm use 20          # required if on Node ≥25
 pnpm install
-pnpm start       # node --env-file-if-exists=.env server.js
-pnpm dev         # same + --watch for auto-restart
+pnpm start          # node --env-file-if-exists=.env server.js
+pnpm dev            # same + --watch for auto-restart
 ```
 
 No test suite exists. No lint or typecheck config. This is a vanilla JS project.
@@ -22,9 +23,10 @@ No test suite exists. No lint or typecheck config. This is a vanilla JS project.
 
 ## Local Setup
 
-1. `cd server && pnpm install`
-2. `pnpm dev` — server starts on port 3001
-3. First user to visit gets a setup form and becomes `platform_admin` automatically
+1. `nvm use 20`
+2. `cd server && pnpm install`
+3. `pnpm dev` — server starts on port 3001
+4. First user to visit gets a setup form and becomes `platform_admin` automatically
 4. All subsequent users must be created by an admin via the admin panel
 
 The `.npmrc` in `server/` sets `registry=https://registry.npmjs.org/` to override any global work registry.
@@ -33,8 +35,7 @@ The `.npmrc` in `server/` sets `registry=https://registry.npmjs.org/` to overrid
 
 - **Local auth only** — no OAuth (Google/Microsoft removed)
 - **No public registration** — first user self-registers via setup form, all other users created by admin
-- Admin creates users at `/app#/admin` with role selection (default: `workspace_editor`)
-- All users are auto-assigned to the admin's workspace on creation
+- Admin creates users at `/app#/admin` with role + workspace assignment (default: `workspace_editor`, workspace optional — if none selected, auto-assigned to admin's workspace)
 - **Recovery tokens**: `node scripts/reset-admin.js` generates a 1-hour emergency token. Paste into browser console. Recovery users have `role: 'admin'` but the app requires `role: 'platform_admin'` for admin access — update the user's role in the DB if needed.
 
 ## Database
@@ -64,7 +65,7 @@ server/           Node.js/Express backend
   db/             SQLite schema + auto-migrations
   routes/         API routes (auth, devices, playlists, schedules, etc.)
   middleware/     Auth (JWT), upload (multer), sanitize
-  services/       heartbeat, alerts, email (MS Graph), scheduler, activity log
+  services/       heartbeat, alerts, email (MS Graph), scheduler, activity log, integration-worker
   ws/             WebSocket handlers (device + dashboard namespaces)
   lib/            tenancy resolver, permissions, socket-rooms, command-queue
   player/         Web-based display player (index.html + sw.js) — Service Worker for offline playback
@@ -74,63 +75,28 @@ android/          Android player (Kotlin + ExoPlayer)
 scripts/          Admin recovery, migration scripts, device setup
 ```
 
-- Multi-tenant: `organizations → workspaces → resources`. Every resource scoped by `workspace_id`.
+- Multi-tenant: `workspaces → resources`. Every resource scoped by `workspace_id`.
 - JWT carries `current_workspace_id` claim. Workspace resolved via: header > query > JWT > first membership > (platform_admin fallback).
-- Six role levels: `platform_admin > org_owner > org_admin > workspace_admin > workspace_editor > workspace_viewer`.
-- CSP applies to dashboard paths only; widget/kiosk render paths (`/api/widgets/:id/render`, `/api/kiosk/:id/render`) bypass it intentionally (inline scripts/styles needed for device display).
+- Two role levels: **system role** (`users.role`: `user`, `workspace_editor`, `workspace_admin`, `platform_admin`) and **workspace role** (`workspace_members.role`: `workspace_editor`, `workspace_admin`, `workspace_viewer`). Admin panel at `/app#/admin` manages both: dropdown for system role, inline select per workspace membership.
+- Platform admins can create and delete workspaces from the admin panel (/app#/admin).
+- CSP applies to dashboard paths only.
 
 ## Removed Features
 
 - **No billing/subscriptions** — Stripe removed, everything is unlimited
 - **No OAuth** — Google and Microsoft sign-in removed
 - **No white-label/branding** — custom branding feature deleted
-- **No marketing pages** — landing, legal, guides, comparisons deleted
 - **No contact form** — enterprise contact endpoint removed
-- **No plans table** — subscription plans dropped from schema (but `plan_id` column remains on `users` for compatibility)
+- **No organizations** — org hierarchy removed; flat workspaces only
+- **No teams** — teams feature removed; workspace memberships replace team groupings
+- **No subscription plans** — plans table dropped; `plan_id` column on `users` is vestigial
+- **No Kiosk/Touchscreen** — `kiosk_pages` table dropped, route/view removed
+- **No Diseñador** — frontend canvas editor removed
+- **No Widgets** — `widgets` table and render routes kept for schema compat but all UI/API removed
 
 ## Known Issues & Fixes
 
-### 1. Missing `plans` table on fresh install
-
-**Error:** `SqliteError: no such table: main.plans`
-
-**Fix:** Create the table manually:
-```bash
-sudo sqlite3 server/db/remote_display.db "
-CREATE TABLE IF NOT EXISTS plans (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  max_devices INTEGER DEFAULT 999999,
-  max_storage_mb INTEGER DEFAULT 999999,
-  has_analytics INTEGER DEFAULT 1,
-  has_priority_support INTEGER DEFAULT 1,
-  price_monthly REAL DEFAULT 0,
-  price_yearly REAL DEFAULT 0,
-  stripe_price_monthly TEXT,
-  stripe_price_yearly TEXT,
-  created_at INTEGER DEFAULT (strftime('%s','now'))
-);
-INSERT OR IGNORE INTO plans (id, name) VALUES ('free', 'Free');
-INSERT OR IGNORE INTO plans (id, name) VALUES ('enterprise', 'Enterprise');
-"
-```
-
-### 2. Missing `plan_id` column on `users` table
-
-**Error:** `SqliteError: no such column: plan_id`
-
-**Fix:** Add the column:
-```bash
-sudo sqlite3 server/db/remote_display.db "ALTER TABLE users ADD COLUMN plan_id TEXT DEFAULT 'free';"
-```
-
-### 3. Organizations FK constraint referencing missing `plans` table
-
-**Error:** `SqliteError: no such table: main.plans` when creating first organization
-
-**Fix:** The multitenancy migration creates `organizations.plan_id` with `REFERENCES plans(id)`. Run `node scripts/fix-organization-fk.js` to recreate the table without the FK constraint. Or create the `plans` table first (see issue #1 above).
-
-### 4. JWT Secret Mismatch
+### 1. JWT Secret Mismatch
 
 **Symptom:** Recovery tokens or user tokens show as "Invalid or expired"
 
@@ -144,7 +110,7 @@ echo "$JWT_SECRET" | sudo tee server/certs/.jwt_secret
 sudo systemctl restart camanchaca-cms
 ```
 
-### 5. First User Setup
+### 2. First User Setup
 
 On a fresh install with 0 users, visiting `/app#/login` shows a "Create Admin Account" form. The first user gets `role: 'platform_admin'` automatically.
 
@@ -153,7 +119,7 @@ If you see a login form instead:
 2. If 0, clear browser localStorage: `localStorage.clear(); location.reload()`
 3. If still showing login, open incognito window
 
-### 6. Android TV Connection Issues
+### 3. Android TV Connection Issues
 
 **Server URL:** Use `https://your-server-domain.com` (NOT `/player`). The app appends `/device` automatically for WebSocket.
 
@@ -163,7 +129,7 @@ If you see a login form instead:
 - Check TV logs via ADB: `adb logcat | grep -i "WebSocket\|socket\|connect"`
 - Ensure TV and server are on same network
 
-### 7. Admin Password Recovery (Lost Access)
+### 4. Admin Password Recovery (Lost Access)
 
 **Symptom:** Locked out of the admin account, `reset-admin.js` creates a NEW admin but you need the original account back.
 
@@ -181,6 +147,30 @@ sqlite3 db/remote_display.db "UPDATE users SET password_hash = 'HASH_FROM_ABOVE'
 
 **Note:** The `reset-admin.js` script creates a NEW user with a 1-hour token. It does NOT recover the original admin's password. Use SQL for existing user recovery.
 
+## Integrations (Power BI, Looker Studio, Custom URLs)
+
+The `integrations` table stores configurations for external data sources. An **integration worker** (`server/services/integration-worker.js`) runs every 30s and:
+
+1. Checks for enabled integrations whose `next_fetch_at` is due
+2. **Power BI**: OAuth2 client credentials → `ExportTo` (PNG) → poll status → download file
+3. **Looker Studio / Custom URL**: HTTP GET with optional Bearer/Basic auth
+4. Saves/replaces the result as a `content` item (reuses the same `content_id` across refreshes)
+5. Updates `published_snapshot` for any playlist referencing that content
+6. **Pushes WebSocket update** to all devices displaying the content so the new image appears immediately
+7. Cache busting via timestamp in filepath (`{contentId}_{timestamp}.png`) — player always gets a fresh URL
+
+The filename stored in the content library is the **integration name** (no extension, no timestamp).
+
+**Supported types:**
+
+| Type | Config fields |
+|------|---------------|
+| `powerbi` | tenant_id, client_id, client_secret, workspace_id, report_id, page_name (optional) |
+| `looker_studio` | url, auth_type, auth_header |
+| `custom_url` | url, auth_type, auth_header |
+
+**UI:** `/app#/integrations` — list, create, edit, delete, manual refresh trigger, preview.
+
 ## Known Quirks
 
 - `proxy-addr` is required by `server/services/activity.js` but was an implicit Express dependency. It's listed in `package.json` explicitly now.
@@ -196,10 +186,28 @@ sqlite3 db/remote_display.db "UPDATE users SET password_hash = 'HASH_FROM_ABOVE'
 |--------|---------|
 | `install-service.sh` | Install as systemd service |
 | `reset-admin.js` | Emergency admin recovery |
-| `migrate-multitenancy.js` | DB migration for multi-tenancy |
-| `parity-multitenancy.js` | Verify migration integrity |
-| `reset-admin.js` | Emergency admin recovery |
-| `fix-organization-fk.js` | Fix organizations table FK constraint |
+
+## API Endpoints (Admin User Management)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/auth/users` | List all users with workspace memberships |
+| `POST` | `/api/auth/admin/users` | Create user (body: `email`, `name`, `password`, `role`, `workspace_id` optional) |
+| `PUT` | `/api/auth/users/:id/role` | Change system role (`user`, `workspace_editor`, `workspace_admin`, `platform_admin`) |
+| `PUT` | `/api/auth/users/:id/workspace-role` | Change workspace membership role (body: `workspace_id`, `role`) |
+| `PUT` | `/api/auth/users/:id/password` | Admin reset password for another user |
+| `DELETE` | `/api/auth/users/:id` | Delete user |
+
+## API Endpoints (Integrations)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/integrations` | List integrations with last content info |
+| `POST` | `/api/integrations` | Create integration (body: `name`, `integration_type`, `config`) |
+| `GET` | `/api/integrations/:id` | Get single integration |
+| `PUT` | `/api/integrations/:id` | Update integration (name, config, enabled) |
+| `DELETE` | `/api/integrations/:id` | Delete integration + orphan content |
+| `POST` | `/api/integrations/:id/refresh` | Trigger immediate fetch |
 
 ## Documentation
 
@@ -237,9 +245,8 @@ Available documentation libraries for deep technical questions. Use these IDs wi
 
 - [ ] `.env` configured with `JWT_SECRET`, `APP_URL`, `NODE_ENV=production`
 - [ ] `.jwt_secret` synced with `.env` JWT_SECRET
-- [ ] `plans` table exists (or run fix script)
-- [ ] `users.plan_id` column exists
 - [ ] SSL certificates in place (or use HTTP on port 3001)
 - [ ] Reverse proxy configured for WebSocket upgrade
 - [ ] First admin account created via setup form
 - [ ] Service running as non-root user (e.g., `tvapp`)
+- [ ] For Power BI integrations: App Registration in Azure AD with `Report.Read.All` (Application permission), service principal added to Power BI workspace

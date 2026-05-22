@@ -24,7 +24,7 @@ export function openWorkspaceRenameModal(workspace) {
         <div class="form-group">
           <label for="renameWsSlug">Slug <span style="color:var(--text-muted);font-weight:400">(optional, URL-safe)</span></label>
           <input id="renameWsSlug" type="text" class="input" maxlength="60" value="${esc(workspace.slug || '')}" placeholder="e.g. studio-a" style="width:100%">
-          <div style="color:var(--text-muted);font-size:11px;margin-top:4px">Lowercase letters, digits, hyphens. Must be unique within the organization.</div>
+          <div style="color:var(--text-muted);font-size:11px;margin-top:4px">Lowercase letters, digits, hyphens. Must be unique.</div>
         </div>
         <div id="renameWsError" style="display:none;color:var(--danger);font-size:13px;margin-top:8px"></div>
       </div>

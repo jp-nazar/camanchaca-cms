@@ -51,8 +51,8 @@ Entry point: `server/server.js` (port 3001)
 ### Key Architectural Decisions
 
 - **Database**: SQLite with WAL mode and foreign keys. Auto-migrates on boot. Snapshots DB before major migrations.
-- **Multi-tenancy**: Hierarchical model: `organizations → workspaces → resources`. Every resource is scoped by `workspace_id`.
-- **Role-based access**: 6 levels — `platform_admin > org_owner > org_admin > workspace_admin > workspace_editor > workspace_viewer`.
+- **Multi-tenancy**: Flat workspace model: `workspaces → resources`. Every resource is scoped by `workspace_id`.
+- **Role-based access**: Two levels — **system roles** (`platform_admin > workspace_admin > workspace_editor > user`) and **workspace roles** (`workspace_admin > workspace_editor > workspace_viewer`).
 - **Workspace resolution**: Determined from JWT `current_workspace_id` claim. Priority: header → query param → JWT → first membership → platform_admin fallback.
 - **Command queue**: If a device is offline when a command is sent, it's queued and flushed on reconnect (30s TTL by default).
 - **CSP**: Strict Content Security Policy on dashboard paths. Widget/kiosk render paths and the web player bypass CSP intentionally (they need inline scripts/styles).

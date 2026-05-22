@@ -22,7 +22,7 @@ Las pantallas de planta dependían de navegadores web tradicionales mostrando da
 - WebSocket persistente con reconexión automática y cola de comandos.
 - Heartbeats y screenshots para monitoreo centralizado.
 - Service Worker y cache offline para que siga funcionando sin internet.
-- CSP estricto en dashboard, pero exento en rutas de render de widgets/kiosk (los dispositivos necesitan inline scripts).
+- CSP estricto en dashboard.
 
 ### Fases de evolución posibles
 1. **Estabilidad base** — players confiables, monitoreo, control remoto.
@@ -98,6 +98,36 @@ export async function render(container) {
 - **Sistema**: Linux recomendado para producción.
 - **Recursos mínimos**: 1GB RAM, 5GB disco (depende del contenido que subas).
 
+### 2.1 Costos de Infraestructura
+
+Cada pantalla conectada **no aumenta el costo del servidor**. El consumo por pantalla es marginal (~2-5 KB RAM + una escritura SQLite cada 15s). Una instancia pequeña corre cientos de pantallas sin problema.
+
+| Tipo | vCPU | RAM | Costo/mes (aprox) | Pantallas recomendadas |
+|------|------|-----|--------------------|----------------------|
+| VPS económico (ej: Lightsail) | 1 | 1 GB | ~$3.5-10 | 1-200 |
+| EC2 t3.nano | 2 (burstable) | 0.5 GB | ~$5 | No recomendado (RAM justa para Node.js) |
+| EC2 t3.micro | 2 (burstable) | 1 GB | ~$8-12 | 1-500+ ✅ |
+| EC2 t3.small | 2 (burstable) | 2 GB | ~$20 | 1-2000+ |
+| EC2 t3.medium | 2 (burstable) | 4 GB | ~$40 | 1-10000+ |
+
+**El costo que sí escala es el ancho de banda**, no el cómputo por pantalla:
+- Heartbeats y WebSocket: prácticamente cero (< 1 MB/mes por pantalla).
+- Contenido multimedia estático: los navegadores lo cachean por 30 días, se descarga **una vez**.
+- Integraciones Power BI (imagen cada 10 min): el worker compara byte a byte antes de escribir. Si el dashboard no cambió, **no se descarga nada**. Si cambió, se actualiza una vez y las TVs descargan la nueva imagen. Cache del navegador mantiene la URL estable.
+
+**Costo real con integraciones Power BI (imagen ~500 KB, refresco cada 10 min):**
+
+| Pantallas | Datos sin cambios (solo WebSocket) | Datos cambian cada hora |
+|-----------|-----------------------------------|------------------------|
+| 10 | ~$0/mes (free tier 100 GB) | ~$0/mes |
+| 50 | ~$0/mes | ~$2/mes |
+| 100 | ~$0/mes | ~$12/mes |
+| 200 | ~$0/mes | ~$35/mes |
+
+El ahorro respecto a la implementación anterior (URL con timestamp que forzaba descarga siempre) es de hasta **83%** en ancho de banda.
+
+**Recomendación:** t3.micro (~$8-12/mes) para la mayoría de los casos. Solo necesita más RAM si supera ~500 pantallas o si se integran múltiples conexiones Power BI simultáneas.
+
 ---
 
 ## 3. Puesta en Marcha
@@ -137,29 +167,31 @@ El primer usuario que visite la URL se convierte en `platform_admin` automática
 
 ### 3.4 Cuentas y Multitenancy
 
-**Modelo:**
+**Modelo simplificado (sin organizaciones):**
 ```
-organizations (contenedor de billing/branding)
-  └── workspaces (scope de recursos: devices, content, playlists)
-       └── members (usuarios con rol en ese workspace)
+workspaces (scope de recursos: devices, content, playlists)
+  └── members (usuarios con rol en ese workspace)
 ```
 
 **Al instalar por primera vez:**
 1. Visitás `/app#/login` con la DB vacía (0 usuarios).
 2. Aparece el formulario "Crear cuenta de administrador".
 3. El primer usuario se crea con `role: 'platform_admin'`.
-4. Se crea automáticamente: una **organización** y un **workspace** default.
+4. Se crea automáticamente un **workspace** default.
 
 **Jerarquía de roles** (de más a menos poder):
 
 | Rol | Alcance | Puede hacer |
 |-----|---------|-------------|
-| `platform_admin` | Todo el sistema | Ver y administrar cualquier workspace. Puede switchear entre todos. |
-| `org_owner` | Su organización | Billing + admin en todos los workspaces de su org |
-| `org_admin` | Su organización | Admin en todos los workspaces (sin billing) |
+| `platform_admin` | Todo el sistema | Crear workspaces, ver y administrar cualquier workspace, gestionar usuarios |
 | `workspace_admin` | Su workspace | Miembros, renombrar, full read/write |
 | `workspace_editor` | Su workspace | Crear/editar contenido, devices, playlists. No tocar miembros. |
 | `workspace_viewer` | Su workspace | Solo lectura |
+
+**Crear / eliminar workspaces:**
+- Solo `platform_admin` puede crear y eliminar workspaces.
+- Desde el panel de Admin (`/app#/admin`) → sección "Workspaces".
+- Los workspaces son completamente aislados: contenido, pantallas y usuarios no se comparten entre workspaces.
 
 **Workspace switching:**
 - El JWT lleva `current_workspace_id`.
@@ -383,7 +415,33 @@ cd server && pnpm install
 sudo systemctl restart camanchaca
 ```
 
-Las migrations corren solas al reiniciar.
+Las migrations corren solas al reiniciar. Si hay tablas nuevas (ej: `integrations`), se crean automáticamente.
+
+### 7.3 Monitorear el Integration Worker
+
+El sistema tiene un worker que refresca contenido externo (Power BI, Looker Studio, URLs personalizadas). Corre cada 30 segundos y consulta las integraciones habilitadas. Cuando detecta contenido nuevo, automáticamente:
+
+1. Compara el archivo en disco byte a byte con la nueva descarga. Si es idéntico, **no hace nada** (la URL estable permite al navegador usar su cache).
+2. Si el contenido cambió, actualiza el archivo en disco (mismo filename siempre, sin timestamp).
+3. Actualiza el `published_snapshot` de los playlists que referencian ese contenido.
+4. Envía un **WebSocket push** a todas las pantallas que muestran ese contenido.
+5. Las pantallas reciben el nuevo playlist y cargan la imagen actualizada.
+
+**Optimización de ancho de banda:** Al mantener el filename estable, el navegador de cada TV usa `If-None-Match` (ETag). Si el archivo no cambió, el servidor responde `304 Not Modified` sin transferir la imagen. Si el worker detecta que los bytes son idénticos, ni siquiera escribe a disco ni envía WebSocket — las TVs nunca se enteran de un refresh que no trajo cambios.
+
+```bash
+# Ver logs del integration worker
+sudo journalctl -u camanchaca | grep integration-worker
+
+# Ver estado de las integraciones
+sqlite3 server/db/remote_display.db "SELECT id, name, integration_type, status, last_error, last_fetched_at, next_fetch_at FROM integrations;"
+```
+
+**Si una integración falla:**
+1. Revisar el error en la columna `last_error`.
+2. Verificar credenciales desde la UI en `/app#/integrations`.
+3. Probar un refresh manual desde el botón "Actualizar ahora".
+4. Verificar conectividad del servidor a Internet (el worker hace requests HTTP/HTTPS externos).
 
 ### 7.3 Recovery de Admin
 
@@ -402,12 +460,12 @@ Genera un token de 1 hora. Pegar en consola del navegador.
 
 | Síntoma | Causa probable | Fix |
 |---------|---------------|-----|
-| "SqliteError: no such table: main.plans" | Tabla `plans` no existe | Crearla manualmente (ver `AGENTS.md` sección Known Issues) |
 | Player "Conectando..." infinito | Proxy sin WebSocket | Revisar headers `Upgrade` y `Connection` en nginx/Caddy |
 | Player web no carga contenido | CSP bloqueando | Revisar que `/player` está excluido de CSP en `server.js` |
 | Android no empareja | URL incorrecta | Usar `https://dominio.com` sin `/player`. El app agrega `/device`. |
 | `better-sqlite3` falla al instalar | Node 25+ o sin build tools | Usar Node 20-22. Instalar `build-essential` en Linux. |
 | JWT inválido después de recovery | `.jwt_secret` vs `.env` desync | Sincronizar `JWT_SECRET` en `.env` con `certs/.jwt_secret` |
+| Integración descargó contenido nuevo pero la pantalla no se actualiza | Snapshot del playlist no actualizado | Verificar `published_snapshot` en DB: `sqlite3 db/remote_display.db "SELECT id, substr(published_snapshot,1,100) FROM playlists WHERE published_snapshot LIKE '%filepath%';"`. Si el filepath está desactualizado, el worker debería actualizarlo automáticamente — revisar logs: `journalctl -u camanchaca | grep integration-worker` |
 
 ---
 
@@ -425,7 +483,7 @@ camanchaca-cms/
 │   │   └── schema.sql             # Schema base
 │   ├── routes/             # API REST
 │   ├── ws/                 # WebSocket handlers
-│   ├── services/           # Background jobs (heartbeat, scheduler, alerts)
+│   ├── services/           # Background jobs (heartbeat, scheduler, alerts, integration-worker)
 │   ├── middleware/         # Auth JWT, uploads, sanitization
 │   ├── player/             # ← Web player (para pantallas/dispositivos)
 │   │   ├── index.html      #   Player HTML/JS puro
@@ -474,3 +532,4 @@ En producción, la estructura se mantiene igual:
 - [ ] Backup automático diario de la DB y uploads.
 - [ ] Firewall: solo 80/443 públicos. Puerto 3001 solo local.
 - [ ] Revisar `GRAPH_DEV_RESTRICT_TO` si se usa email (dejar vacío en prod).
+- [ ] Monitorear integration worker si se usan integraciones externas: `journalctl -u camanchaca | grep integration-worker`

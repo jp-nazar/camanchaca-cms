@@ -139,7 +139,7 @@ async function renderEditor(container, layoutId) {
           <div class="form-group"><label>${'Alto (%)'}</label><input type="number" id="propH" class="input" min="1" max="100" step="0.1"></div>
           <div class="form-group"><label>${'Tipo'}</label>
             <select id="propType" class="input" style="background:var(--bg-input)">
-              <option value="content">${'Contenido'}</option><option value="widget">${'Widget'}</option>
+              <option value="content">${'Contenido'}</option>
             </select>
           </div>
           <button class="btn btn-danger btn-sm" id="deleteZoneBtn" style="width:100%;justify-content:center;margin-top:8px">${'Eliminar zona'}</button>

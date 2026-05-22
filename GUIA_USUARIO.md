@@ -8,7 +8,7 @@ Manual para usuarios del dashboard. Cómo usar el sistema para gestionar pantall
 
 ### ¿Qué es un Workspace?
 
-Un **workspace** es un espacio de trabajo independiente que contiene sus propios recursos: pantallas, contenido, playlists, widgets y miembros. Piensa en ello como una "carpeta" donde todo lo que creas está aislado de otros workspaces.
+Un **workspace** es un espacio de trabajo independiente que contiene sus propios recursos: pantallas, contenido, playlists e integraciones. Piensa en ello como una "carpeta" donde todo lo que creas está aislado de otros workspaces.
 
 **Ejemplo práctico:**
 - **Workspace "Planta Santiago"** → Contiene las pantallas de la planta de Santiago, sus videos de seguridad, y los operadores locales.
@@ -29,8 +29,6 @@ Tu rol determina qué puedes hacer en el sistema. De más poder a menos poder:
 | Rol | ¿Qué puedo hacer? |
 |-----|-------------------|
 | **Platform Admin** | Todo: crear workspaces, usuarios, ver todo el sistema |
-| **Org Owner** | Administrar su organización y todos los workspaces dentro de ella |
-| **Org Admin** | Administrar workspaces (sin acceso a billing) |
 | **Workspace Admin** | Administrar miembros, renombrar workspace, full control dentro de su workspace |
 | **Workspace Editor** | Crear/editar contenido, playlists, pantallas. **No** puede agregar/quitar usuarios |
 | **Workspace Viewer** | Solo ver contenido y estado de pantallas. **No** puede editar nada |
@@ -52,7 +50,33 @@ Si perteneces a múltiples workspaces, verás un **selector en la barra lateral*
 
 ---
 
-## 4. Gestión de Usuarios (Solo Admins)
+## 4. Crear Workspaces (Solo Platform Admin)
+
+Los **workspaces** son espacios de trabajo independientes. Cada workspace tiene su propio contenido, pantallas, playlists y usuarios.
+
+**Casos de uso:**
+- **Planta Santiago** y **Planta Puerto Montt** → Workspaces separados para cada ubicación.
+- **Edificio Principal** y **Edificio Anexo** → Workspaces separados para cada edificio.
+- **Área de Producción** y **Área de Oficinas** → Workspaces separados para cada área.
+
+### Crear un workspace
+
+1. Ve a **"Admin"** en el menú lateral.
+2. En la sección **"Workspaces"**, haz clic en **"+ Crear workspace"**.
+3. Ingresa un nombre descriptivo (ej: "Planta Santiago").
+4. Guarda. El workspace se creará y podrás cambiar a él desde el dropdown del sidebar.
+
+**Nota:** Solo los usuarios con rol **Platform Admin** pueden crear workspaces.
+
+### ¿Por qué usar workspaces?
+
+- **Aislamiento:** El contenido de una planta no se mezcla con el de otra.
+- **Permisos:** Puedes dar acceso a usuarios solo a ciertos workspaces.
+- **Organización:** Cada área o edificio gestiona su propio contenido.
+
+---
+
+## 5. Gestión de Usuarios (Solo Admins)
 
 ### Crear un usuario nuevo
 
@@ -115,13 +139,13 @@ Una **playlist** es una secuencia ordenada de contenido que se reproduce en una 
 Playlist
 ├── Item 1: video_de_seguridad.mp4 (30 segundos)
 ├── Item 2: imagen_kpi.jpg (10 segundos)
-├── Item 3: widget_reloj (widget dinámico)
+├── Item 3: Dashboard Ventas (integración Power BI)
 └── Item 4: video_youtube (duración automática)
 ```
 
 **Cada item tiene:**
-- **Contenido:** El archivo, widget o URL.
-- **Duración:** Cuántos segundos se muestra (para imágenes y widgets; los videos usan su duración natural).
+- **Contenido:** El archivo o URL.
+- **Duración:** Cuántos segundos se muestra (para imágenes; los videos usan su duración natural).
 - **Orden:** Posición en la secuencia (arrastra para reordenar).
 
 ### Crear una playlist
@@ -137,7 +161,7 @@ Playlist
 2. Selecciona de tu Biblioteca de contenido:
    - Videos
    - Imágenes
-   - Widgets (reloj, clima, texto, etc.)
+    - Imágenes de integraciones (Power BI, Looker Studio)
 3. Ajusta la **duración** si es necesario (solo para imágenes/widgets).
 4. Arrastra los items para cambiar el orden.
 
@@ -202,30 +226,50 @@ Los **layouts** permiten dividir la pantalla en **zonas** para mostrar múltiple
 
 ---
 
-## 9. Widgets
+## 9. Integraciones (Power BI, Looker Studio, URLs)
 
-Los **widgets** son contenido dinámico que se actualiza automáticamente.
+Las **integraciones** permiten conectar fuentes de datos externas para mostrar dashboards e informes directamente en tus pantallas.
 
-### Tipos de widgets
+### Cómo funciona
 
-- **Reloj:** Hora actual con formato configurable.
-- **Clima:** Pronóstico del tiempo (requiere configurar ubicación).
-- **Texto/HTML:** Mensajes personalizados con formato HTML.
-- **RSS Ticker:** Noticias de una fuente RSS.
-- **Página web:** Mostrar una página web completa.
-- **Directorio:** Lista de departamentos/personas (ideal para vestíbulos).
+El sistema descarga automáticamente (cada cierto intervalo) una captura de tu dashboard y la guarda como contenido en la biblioteca. Luego puedes asignar ese contenido a las playlists como cualquier imagen.
 
-### Crear un widget
+### Tipos de integración
 
-1. Ve a **"Widgets"** en el menú lateral.
-2. Haz clic en **"+ Nuevo widget"**.
-3. Selecciona el tipo.
-4. Configura según el tipo (texto, ubicación para clima, URL para web, etc.).
+- **Power BI:** Conéctate con OAuth2 (client credentials). El sistema exporta el reporte a PNG automáticamente cada N minutos. Requiere Tenant ID, Client ID, Client Secret, Workspace ID y Report ID.
+- **Looker Studio:** Proporciona una URL pública o con autenticación. El sistema descarga la imagen periódicamente.
+- **URL personalizada:** Cualquier endpoint HTTP/HTTPS que devuelva una imagen PNG.
+
+### Crear una integración
+
+1. Ve a **"Integraciones"** en el menú lateral.
+2. Haz clic en **"+ Nueva integración"**.
+3. Selecciona el tipo:
+   - **Power BI:** Ingresa los datos de tu aplicación Azure AD (Tenant, Client ID, Secret) y el ID del reporte. Opcionalmente especifica una página.
+   - **Looker Studio:** Ingresa la URL de tu dashboard. Si requiere autenticación, selecciona Bearer o Basic y proporciona el token.
+   - **URL personalizada:** Similar a Looker Studio, para cualquier endpoint.
+4. Configura el **intervalo de actualización** (minutos).
 5. Guarda.
 
-### Usar widgets en playlists
+La primera descarga ocurrirá en pocos segundos. El estado se muestra con indicadores:
+- 🟢 Success: Última descarga exitosa.
+- 🔴 Error: Algo falló. Revisa las credenciales y la conectividad.
+- 🔄 Actualizando: El worker está descargando.
 
-Los widgets se agregan a las playlists como cualquier otro contenido. Dura el tiempo que especifiques (ej: 10 segundos), y se actualiza en cada ciclo.
+### Ver el resultado
+
+Cada integración genera un **contenido** en tu biblioteca con el **nombre de la integración** (sin extensión). Puedes:
+- **Previsualizar** desde la misma página de Integraciones.
+- **Asignar a una playlist** como cualquier otro contenido multimedia.
+- Ver la **fecha de última actualización** para saber si está al día.
+
+### Actualización automática en pantalla
+
+Cuando la integración se refresca (según el intervalo configurado), el worker descarga la nueva imagen y **actualiza automáticamente todas las pantallas** que están mostrando ese contenido — no es necesario volver a publicar ni re-asignar nada.
+
+### Forzar actualización manual
+
+Si necesitas el dashboard actualizado de inmediato, haz clic en **"Actualizar ahora"** en la tarjeta de la integración.
 
 ---
 
@@ -303,7 +347,7 @@ El límite es 500MB por archivo. Videos más grandes deberán comprimirse o subi
 El **Service Worker** del player cachea el contenido. La pantalla seguirá reproduciendo lo que ya tenía descargado. Cuando vuelva la conexión, se sincronizará automáticamente.
 
 ### ¿Puedo editar un contenido que ya está en una playlist?
-Sí, pero deberás **volver a publicar la playlist** para que los cambios se apliquen a las pantallas.
+Sí, pero deberás **volver a publicar la playlist** para que los cambios se apliquen a las pantallas. Las integraciones (Power BI, etc.) se actualizan automáticamente sin necesidad de re-publicar.
 
 ### ¿Cómo cambio mi contraseña?
 Ve a **"Configuración"** (icono de engranaje) → **"Cuenta"** → **"Cambiar contraseña"**.

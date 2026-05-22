@@ -116,9 +116,6 @@ export const api = {
     body: JSON.stringify({ order })
   }),
 
-  // Widgets
-  getWidgets: () => request('/widgets'),
-
   // Device Groups
   getGroups: () => request('/groups'),
   createGroup: (name, color) => request('/groups', { method: 'POST', body: JSON.stringify({ name, color }) }),
@@ -158,6 +155,7 @@ export const api = {
   updateMe: (data) => request('/auth/me', { method: 'PUT', body: JSON.stringify(data) }),
   switchWorkspace: (workspaceId) => request('/auth/switch-workspace', { method: 'POST', body: JSON.stringify({ workspace_id: workspaceId }) }),
   renameWorkspace: (id, data) => request(`/workspaces/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  createWorkspace: (name) => request('/workspaces', { method: 'POST', body: JSON.stringify({ name }) }),
 
   // Admin - Users
   getUsers: () => request('/auth/users'),
@@ -165,9 +163,5 @@ export const api = {
   resetUserPassword: (id, password) => request(`/auth/users/${id}/password`, {
     method: 'PUT',
     body: JSON.stringify({ password }),
-  }),
-  assignPlan: (user_id, plan_id) => request('/subscription/assign', {
-    method: 'POST',
-    body: JSON.stringify({ user_id, plan_id })
   }),
 };

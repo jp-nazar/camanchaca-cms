@@ -15,8 +15,7 @@ const { workspaceRoom } = require('../lib/socket-rooms');
 // Inbound commands check permission against the target device's workspace.
 
 // Permission gate for inbound socket commands. Read tier = workspace_viewer+;
-// write tier = workspace_editor+. Platform_admin and org_owner/admin always
-// pass via actingAs.
+// write tier = workspace_editor+. Platform_admin always passes.
 function canActOnDevice(socket, deviceId, tier /* 'read' | 'write' */) {
   const device = db.prepare('SELECT workspace_id FROM devices WHERE id = ?').get(deviceId);
   if (!device || !device.workspace_id) return false;

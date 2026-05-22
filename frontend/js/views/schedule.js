@@ -192,7 +192,7 @@ export async function render(container) {
         background:${ev.color || '#3B82F6'};border-radius:3px;padding:2px 4px;font-size:10px;color:white;overflow:hidden;cursor:pointer;z-index:1;opacity:0.85;
         ${isGroupSchedule ? 'border:1.5px dashed rgba(255,255,255,0.6);' : ''}`;
 
-      const label = ev.title || ev.playlist_name || ev.content_name || ev.widget_name || 'Programado';
+      const label = ev.title || ev.playlist_name || ev.content_name || 'Programado';
       const prefix = isGroupSchedule ? `[${esc(ev.group_name || 'Grupo')}] ` : '';
       block.textContent = prefix + label;
       block.title = `${isGroupSchedule ? 'Grupo: ' + (ev.group_name || '') + '\n' : ''}${start.toLocaleTimeString()} - ${end.toLocaleTimeString()}\n${'Prioridad: ' + (ev.priority)}`;

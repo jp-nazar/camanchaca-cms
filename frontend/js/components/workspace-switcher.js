@@ -1,18 +1,5 @@
-import { t } from '../i18n.js';
 import { api } from '../api.js';
 import { showToast } from './toast.js';
-
-// Reusable resource-count formatter. Returns localized "1 device" / "N devices"
-// / "No devices" based on n. Generic so the same shape can wire users /
-// playlists / schedules counts later without refactor - caller supplies the
-// i18n key bases.
-//   keyBase: e.g. 'switcher.devices_count' (looks up _one / _other variants via tn)
-//   zeroKey: e.g. 'switcher.no_devices' (direct lookup for n === 0)
-function formatResourceCount(n, keyBase, zeroKey) {
-  if (n === undefined || n === null) return '';
-  if (n === 0) return t(zeroKey);
-  return tn(keyBase, n);
-}
 
 // Render the workspace switcher inside #workspaceSwitcher based on the
 // /api/auth/me response. Three modes:
@@ -51,12 +38,8 @@ export function renderWorkspaceSwitcher(me) {
     </button>
     <div class="workspace-switcher-menu" role="listbox">
       ${sorted.map(w => {
-        const countStr = formatResourceCount(w.device_count, 'switcher.devices_count', 'switcher.no_devices');
-        const orgName = w.organization_name || '';
-        const subtitle = orgName && countStr ? esc(orgName) + ' · ' + esc(countStr)
-                       : orgName            ? esc(orgName)
-                       : countStr           ? esc(countStr)
-                                            : '';
+        const devCount = w.device_count;
+        const countStr = devCount === undefined || devCount === null ? '' : (devCount === 0 ? 'Sin dispositivos' : (devCount === 1 ? '1 dispositivo' : devCount + ' dispositivos'));
         return `
         <div class="workspace-switcher-item ${w.id === currentId ? 'current' : ''}" data-workspace-id="${esc(w.id)}" role="option">
           <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="${w.id === currentId ? '' : 'visibility:hidden'}">
@@ -64,15 +47,8 @@ export function renderWorkspaceSwitcher(me) {
           </svg>
           <div class="ws-meta">
             <div class="ws-name">${esc(w.name)}</div>
-            <div class="ws-org">${subtitle}</div>
+            ${countStr ? `<div class="ws-org">${esc(countStr)}</div>` : ''}
           </div>
-          ${w.can_admin ? `
-            <button class="workspace-switcher-pencil" type="button" data-rename-id="${esc(w.id)}" aria-label="Rename workspace" title="Rename">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
-              </svg>
-            </button>
-          ` : ''}
         </div>
       `;
       }).join('')}
@@ -85,20 +61,6 @@ export function renderWorkspaceSwitcher(me) {
     const opening = !container.classList.contains('open');
     container.classList.toggle('open');
     button.setAttribute('aria-expanded', String(opening));
-  });
-
-  // Pencil click opens the rename modal. Must stopPropagation so the click
-  // doesn't bubble up to the switcher-item's switch handler.
-  container.querySelectorAll('.workspace-switcher-pencil').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const wsId = btn.dataset.renameId;
-      const ws = sorted.find(w => w.id === wsId);
-      if (!ws) return;
-      container.classList.remove('open');
-      const { openWorkspaceRenameModal } = await import('./workspace-rename-modal.js');
-      openWorkspaceRenameModal(ws);
-    });
   });
 
   container.querySelectorAll('.workspace-switcher-item').forEach(item => {
@@ -120,6 +82,31 @@ export function renderWorkspaceSwitcher(me) {
       }
     });
   });
+
+  // Create workspace button
+  const createBtn = container.querySelector('.workspace-switcher-create-btn');
+  if (createBtn) {
+    createBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      container.classList.remove('open');
+      const name = prompt('Nombre del nuevo workspace:');
+      if (!name || !name.trim()) return;
+      try {
+        const resp = await api.createWorkspace(name.trim());
+        if (resp?.id) {
+          showToast('Workspace creado exitosamente', 'success');
+          // Switch to the new workspace
+          const switchResp = await api.switchWorkspace(resp.id);
+          if (switchResp?.token) {
+            localStorage.setItem('token', switchResp.token);
+            window.location.reload();
+          }
+        }
+      } catch (err) {
+        showToast(err.message || 'Error al crear workspace', 'error');
+      }
+    });
+  }
 
   // Click-outside closes the menu.
   document.addEventListener('click', (e) => {

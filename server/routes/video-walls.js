@@ -2,10 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { db } = require('../db/database');
-// Phase 2.2l: workspace-aware access. Drops the previous listVisibleWalls /
-// userCanAccessWall helpers - the admin/team_members branches there were
-// dead code after the Phase 2.1 role rename (no users carry role='admin'
-// anymore; team_members is a vestigial table from the pre-workspace model).
 const { accessContext } = require('../lib/tenancy');
 
 // Load a wall + access context. Returns the wall row or null after sending

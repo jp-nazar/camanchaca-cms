@@ -48,29 +48,13 @@ router.post('/', (req, res) => {
   const wsId = uuidv4();
   const now = Math.floor(Date.now() / 1000);
   
-  // Use a default organization or create one if needed
-  let orgId = req.body.organization_id || null;
-  if (!orgId) {
-    // Try to get the first organization
-    const org = db.prepare('SELECT id FROM organizations LIMIT 1').get();
-    if (org) {
-      orgId = org.id;
-    } else {
-      // Create a default organization
-      orgId = uuidv4();
-      db.prepare('INSERT INTO organizations (id, name, created_at) VALUES (?, ?, ?)')
-        .run(orgId, 'Default Organization', now);
-    }
-  }
-  
   try {
-    // Create workspace
-    db.prepare('INSERT INTO workspaces (id, organization_id, name, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(wsId, orgId, name, req.user.id, now, now);
+    db.prepare('INSERT INTO workspaces (id, name, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
+      .run(wsId, name, req.user.id, now, now);
     
     // Add creator as workspace_admin
-    db.prepare('INSERT INTO workspace_members (workspace_id, user_id, role, created_at) VALUES (?, ?, ?, ?)')
-      .run(wsId, req.user.id, 'workspace_admin', now);
+    db.prepare('INSERT INTO workspace_members (workspace_id, user_id, role) VALUES (?, ?, ?)')
+      .run(wsId, req.user.id, 'workspace_admin');
     
     const workspace = db.prepare('SELECT * FROM workspaces WHERE id = ?').get(wsId);
     res.status(201).json(workspace);
@@ -157,12 +141,12 @@ router.patch('/:id', (req, res) => {
     db.prepare(`UPDATE workspaces SET ${updates.join(', ')} WHERE id = ?`).run(...values);
   } catch (e) {
     if (e.code === 'SQLITE_CONSTRAINT_UNIQUE' || /UNIQUE/i.test(e.message)) {
-      return res.status(409).json({ error: 'Slug already used in this organization' });
+      return res.status(409).json({ error: 'Slug already in use' });
     }
     throw e;
   }
 
-  const updated = db.prepare('SELECT id, name, slug, organization_id FROM workspaces WHERE id = ?').get(req.params.id);
+  const updated = db.prepare('SELECT id, name, slug FROM workspaces WHERE id = ?').get(req.params.id);
   res.json(updated);
 });
 

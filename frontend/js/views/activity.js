@@ -100,7 +100,6 @@ function formatAction(action) {
     .replace('/assignments/device/:deviceId', 'asignación de lista')
     .replace('/assignments/:id', 'asignación')
     .replace('/layouts', 'diseño')
-    .replace('/widgets', 'widget')
     .replace('/schedules', 'horario')
     .replace('/walls', 'muro de video')
     .replace('alert:device_offline', 'alerta: dispositivo desconectado');

@@ -6,7 +6,7 @@ import { esc, isPlatformAdmin } from '../utils.js';
 
 export async function render(container) {
   const serverUrl = `${window.location.protocol}//${window.location.host}`;
-  // Fetch fresh user from the server — plan_id and role may have been changed
+  // Fetch fresh user from the server — role may have been changed
   // by an admin since login. Fall back to localStorage if the request fails.
   let user;
   try { user = await api.getMe(); localStorage.setItem('user', JSON.stringify(user)); }
@@ -134,12 +134,12 @@ export async function render(container) {
       let data;
       if (isZip) {
         // For ZIP, show basic info and skip preview parsing
-        data = { format: 'screentinker-export-v1', _isZip: true };
+        data = { format: 'camanchaca-export-v1', _isZip: true };
         statusEl.innerHTML = `${'Exportación ZIP detectada: <strong>' + (esc(file.name)) + '</strong> (' + ((file.size / 1048576).toFixed(1)) + ' MB)<br>Contiene datos + archivos multimedia.'}<br><br><button class="btn btn-primary btn-sm" id="confirmImportBtn">${'Confirmar importación'}</button> <button class="btn btn-secondary btn-sm" id="cancelImportBtn">${'Cancelar'}</button>`;
       } else {
         const text = await file.text();
         data = JSON.parse(text);
-        if (!data.format || !data.format.startsWith('screentinker-export')) {
+        if (!data.format || !data.format.startsWith('camanchaca-export')) {
           statusEl.style.color = 'var(--danger)';
           statusEl.textContent = 'Archivo no válido. Debe ser un JSON o ZIP de exportación de Camanchaca CMS.';
           return;
@@ -147,11 +147,9 @@ export async function render(container) {
         const summary = [
           data.devices?.length ? (data.devices.length) + ' dispositivos' : null,
           data.content?.length ? (data.content.length) + ' elementos de contenido' : null,
-          data.widgets?.length ? (data.widgets.length) + ' widgets' : null,
           data.layouts?.length ? (data.layouts.length) + ' diseños' : null,
           data.schedules?.length ? (data.schedules.length) + ' horarios' : null,
           data.video_walls?.length ? (data.video_walls.length) + ' muros de video' : null,
-          data.kiosk_pages?.length ? (data.kiosk_pages.length) + ' páginas de kiosco' : null,
         ].filter(Boolean).join(', ');
         statusEl.innerHTML = `${'Encontrado: ' + (esc(summary) || t('settings.import.empty_export')) + '.<br>De: ' + (esc(data.user?.email) || t('common.unknown')) + ' (exportado ' + (esc(data.exported_at?.split('T')[0]) || t('common.unknown')) + ')'}<br><br><button class="btn btn-primary btn-sm" id="confirmImportBtn">${'Confirmar importación'}</button> <button class="btn btn-secondary btn-sm" id="cancelImportBtn">${'Cancelar'}</button>`;
       }

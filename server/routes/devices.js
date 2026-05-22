@@ -7,11 +7,7 @@ const { PLATFORM_ROLES, ELEVATED_ROLES } = require('../middleware/auth');
 const { accessContext } = require('../lib/tenancy');
 
 // List devices in the caller's current workspace.
-// Phase 2.2a: filter by workspace_id instead of user_id. The caller's current
-// workspace is resolved by resolveTenancy middleware from JWT or query/header
-// override. Platform_admin and org_owner/admin see whichever workspace they
-// are currently switched into (cross-workspace visibility comes from
-// switch-workspace, not from a special list filter).
+// Filter by workspace_id via resolveTenancy middleware.
 router.get('/', (req, res) => {
   if (!req.workspaceId) return res.json([]);
   const limit = Math.min(parseInt(req.query.limit) || 100, 500);
@@ -84,14 +80,12 @@ router.get('/:id', (req, res) => {
   let playlist_has_published = false;
   if (device.playlist_id) {
     assignments = db.prepare(`
-      SELECT pi.id, pi.content_id, pi.widget_id, pi.sort_order, pi.duration_sec,
+      SELECT pi.id, pi.content_id, pi.sort_order, pi.duration_sec,
              pi.created_at, pi.updated_at,
-             COALESCE(c.filename, w.name) as filename, c.mime_type, c.filepath, c.thumbnail_path,
-             c.duration_sec as content_duration, c.remote_url,
-             w.name as widget_name, w.widget_type, w.config as widget_config
+             c.filename, c.mime_type, c.filepath, c.thumbnail_path,
+             c.duration_sec as content_duration, c.remote_url
       FROM playlist_items pi
       LEFT JOIN content c ON pi.content_id = c.id
-      LEFT JOIN widgets w ON pi.widget_id = w.id
       WHERE pi.playlist_id = ?
       ORDER BY pi.sort_order ASC
     `).all(device.playlist_id);
@@ -120,9 +114,6 @@ router.get('/:id', (req, res) => {
 });
 
 // Helper: check device write access via the workspace the device belongs to.
-// Phase 2.2a: replaces user_id + team_members check. Allows: platform_admin,
-// org_owner/admin of the device's org (acting-as), workspace_admin/editor of
-// the device's workspace. Denies workspace_viewer and non-members.
 function checkDeviceOwnership(req, res) {
   const device = db.prepare('SELECT * FROM devices WHERE id = ?').get(req.params.id);
   if (!device) { res.status(404).json({ error: 'Device not found' }); return null; }
@@ -130,8 +121,7 @@ function checkDeviceOwnership(req, res) {
   const ws = db.prepare('SELECT * FROM workspaces WHERE id = ?').get(device.workspace_id);
   const ctx = ws && accessContext(req.user.id, req.user.role, ws);
   if (!ctx) { res.status(403).json({ error: 'Access denied' }); return null; }
-  // ctx.actingAs covers platform_admin and org_owner/admin paths (always writable).
-  // Direct workspace members: workspace_viewer is read-only.
+  // platform_admin bypasses workspace_viewer read-only.
   if (!ctx.actingAs && ctx.workspaceRole === 'workspace_viewer') {
     res.status(403).json({ error: 'Read-only access' }); return null;
   }

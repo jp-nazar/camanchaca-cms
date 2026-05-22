@@ -178,7 +178,7 @@ router.post('/remote', (req, res) => {
   }
 });
 
-// Add YouTube content (available to all plans - no storage used)
+// Add YouTube content
 router.post('/youtube', async (req, res) => {
   try {
     if (!req.workspaceId) return res.status(403).json({ error: 'No workspace context. Switch to a workspace before adding YouTube content.' });

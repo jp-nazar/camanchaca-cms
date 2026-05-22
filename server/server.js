@@ -51,10 +51,7 @@ const io = new Server(server, {
 // Middleware
 const helmet = require('helmet');
 
-// CSP applies to the dashboard / app pages only. Widget and kiosk renders are
-// publicly accessed by devices and intentionally use inline scripts/styles —
-// they're served from /api/widgets/:id/render and /api/kiosk/:id/render and
-// skip the CSP layer below via path-based opt-out.
+// CSP applies to the dashboard / app pages only.
 //
 // scriptSrc 'self' blocks <script> injection (the primary XSS vector) and external
 // JS. scriptSrcAttr 'unsafe-inline' allows existing onclick/onchange handlers on
@@ -86,19 +83,14 @@ const dashboardCsp = helmet.contentSecurityPolicy({
 
 app.use(helmet({
   contentSecurityPolicy: false,        // we apply our own below, scoped to non-render paths
-  crossOriginEmbedderPolicy: false,    // allow loading external widget content
+  crossOriginEmbedderPolicy: false,
   hsts: { maxAge: 31536000, includeSubDomains: true },
 }));
 
-// Apply CSP everywhere except routes that legitimately need inline scripts:
-// - widget/kiosk renders (public, fetched by devices, intentionally inline)
-// - /player (the web player has inline JS, served to display devices)
-// - /         (landing page has inline JSON-LD + a pricing fetch script)
+// Apply CSP everywhere except /player (the web player has inline JS).
 // The dashboard at /app uses ES modules only and gets the strict policy.
 app.use((req, res, next) => {
   if (req.path.startsWith('/player')) return next();
-  if (req.path.startsWith('/api/widgets/') && req.path.endsWith('/render')) return next();
-  if (req.path.startsWith('/api/kiosk/') && req.path.endsWith('/render')) return next();
   return dashboardCsp(req, res, next);
 });
 // CORS policy.
@@ -267,13 +259,7 @@ app.get('/api/content/:id/file', (req, res) => {
   if (!content) return res.status(404).json({ error: 'Content not found' });
   if (!content.filepath) return res.status(404).json({ error: 'No file (remote URL content)' });
   const inPlaylist = db.prepare('SELECT id FROM playlist_items WHERE content_id = ? LIMIT 1').get(req.params.id);
-  // Scope widget lookup to widgets in the content's workspace — prevents a user
-  // in another workspace from unlocking this content by creating a widget that
-  // references the UUID. Phase 2.2d: keyed off content.workspace_id (was user_id).
-  // Perf note: LIKE scan on widgets.config is O(n) per request. Fine at current scale
-  // (<100 widgets); revisit with a content_widget_refs join table if this grows.
-  const inWidget = inPlaylist ? null : db.prepare('SELECT id FROM widgets WHERE workspace_id = ? AND config LIKE ? LIMIT 1').get(content.workspace_id, `%/api/content/${req.params.id}/%`);
-  if (!inPlaylist && !inWidget) return res.status(403).json({ error: 'Content not assigned to any playlist or widget' });
+  if (!inPlaylist) return res.status(403).json({ error: 'Content not assigned to any playlist' });
   const safePath = path.resolve(config.contentDir, path.basename(content.filepath));
   if (!safePath.startsWith(path.resolve(config.contentDir))) return res.status(403).json({ error: 'Invalid path' });
   res.sendFile(safePath);
@@ -317,29 +303,13 @@ app.use('/api/folders', requireAuth, resolveTenancy, require('./routes/folders')
 app.use('/api/assignments', requireAuth, resolveTenancy, require('./routes/assignments'));
 app.use('/api/provision', requireAuth, resolveTenancy, require('./routes/provisioning'));
 app.use('/api/layouts', requireAuth, resolveTenancy, require('./routes/layouts'));
-// Widget render is public (accessed by devices)
-app.get('/api/widgets/:id/render', (req, res, next) => { req._skipAuth = true; next(); });
-// Rate limit preview endpoint — it inlines user content as base64 which is memory-intensive
-app.use('/api/widgets/preview', rateLimit(60000, 30));
-app.use('/api/widgets', (req, res, next) => { if (req._skipAuth) return next(); requireAuth(req, res, next); }, resolveTenancy, require('./routes/widgets'));
 app.use('/api/schedules', requireAuth, resolveTenancy, require('./routes/schedules'));
 app.use('/api/walls', requireAuth, resolveTenancy, require('./routes/video-walls'));
-app.use('/api/teams', requireAuth, resolveTenancy, require('./routes/teams'));
 app.use('/api/reports', requireAuth, resolveTenancy, require('./routes/reports'));
 app.use('/api/groups', requireAuth, resolveTenancy, require('./routes/device-groups'));
 app.use('/api/playlists', requireAuth, resolveTenancy, require('./routes/playlists'));
 app.use('/api/activity', requireAuth, resolveTenancy, require('./routes/activity'));
-
-// Kiosk render is public (accessed by devices), CRUD is protected
-app.get('/api/kiosk/:id/render', (req, res, next) => {
-  // Let it through to the kiosk route without auth
-  req._skipAuth = true;
-  next();
-});
-app.use('/api/kiosk', (req, res, next) => {
-  if (req._skipAuth) return next();
-  requireAuth(req, res, next);
-}, resolveTenancy, require('./routes/kiosk'));
+app.use('/api/integrations', requireAuth, resolveTenancy, require('./routes/integrations'));
 
 // Frontend version hash (changes when files are modified, triggers soft reload)
 const crypto = require('crypto');
@@ -349,9 +319,9 @@ function updateFrontendHash() {
     const files = ['index.html', 'js/app.js', 'js/api.js', 'js/socket.js', 'css/main.css',
       'js/views/dashboard.js', 'js/views/device-detail.js', 'js/views/content-library.js',
       'js/views/settings.js', 'js/views/login.js',
-      'js/views/layout-editor.js', 'js/views/schedule.js', 'js/views/widgets.js',
-      'js/views/video-wall.js', 'js/views/reports.js', 'js/views/designer.js',
-      'js/views/activity.js', 'js/views/kiosk.js'].map(f => {
+      'js/views/layout-editor.js', 'js/views/schedule.js',
+      'js/views/video-wall.js', 'js/views/reports.js',
+      'js/views/activity.js', 'js/views/integrations.js'].map(f => {
       try { return fs.readFileSync(path.join(config.frontendDir, f)); } catch { return ''; }
     });
     // Include player files in hash so web players detect code updates
@@ -435,6 +405,10 @@ startScheduler(io);
 // Start alert service
 const { startAlertService } = require('./services/alerts');
 startAlertService(io);
+
+// Start integration worker
+const { startIntegrationWorker } = require('./services/integration-worker');
+startIntegrationWorker(io);
 
 // Handle provisioning via WebSocket notification
 const { db } = require('./db/database');

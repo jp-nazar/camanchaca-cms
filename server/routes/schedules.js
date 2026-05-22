@@ -12,11 +12,10 @@ const { accessContext } = require('../lib/tenancy');
 // Helper: build the expanded schedule query for a device (device-level + group-level)
 function getDeviceSchedulesQuery() {
   return `
-    SELECT s.*, c.filename as content_name, w.name as widget_name, p.name as playlist_name,
+    SELECT s.*, c.filename as content_name, p.name as playlist_name,
            dg.name as group_name, dg.color as group_color
     FROM schedules s
     LEFT JOIN content c ON s.content_id = c.id
-    LEFT JOIN widgets w ON s.widget_id = w.id
     LEFT JOIN playlists p ON s.playlist_id = p.id
     LEFT JOIN device_groups dg ON s.group_id = dg.id
     WHERE s.enabled = 1
@@ -64,9 +63,9 @@ function workspaceAccess(req, workspaceId) {
 }
 
 // Verify a referenced row exists and lives in the given workspace. Returns
-// null on success, or { status, error } on failure. Used for content / widget
-// / layout / playlist refs (where workspace_id IS NULL is the platform-template
-// path and is always allowed) and for devices / device_groups (where
+// null on success, or { status, error } on failure. Used for content / layout
+// / playlist refs (where workspace_id IS NULL is the platform-template path
+// and is always allowed) and for devices / device_groups (where
 // workspace_id is required - those tables never carry template rows).
 function checkRefInWorkspace(table, id, workspaceId, opts = { allowNullWorkspace: false }) {
   const row = db.prepare(`SELECT workspace_id FROM ${table} WHERE id = ?`).get(id);
@@ -80,11 +79,10 @@ function checkRefInWorkspace(table, id, workspaceId, opts = { allowNullWorkspace
 router.get('/', (req, res) => {
   if (!req.workspaceId) return res.json([]);
   const { device_id, group_id, start, end } = req.query;
-  let sql = `SELECT s.*, c.filename as content_name, w.name as widget_name, p.name as playlist_name,
+  let sql = `SELECT s.*, c.filename as content_name, p.name as playlist_name,
              dg.name as group_name, dg.color as group_color
              FROM schedules s
              LEFT JOIN content c ON s.content_id = c.id
-             LEFT JOIN widgets w ON s.widget_id = w.id
              LEFT JOIN playlists p ON s.playlist_id = p.id
              LEFT JOIN device_groups dg ON s.group_id = dg.id
              WHERE s.workspace_id = ?`;
@@ -142,10 +140,10 @@ router.get('/week', (req, res) => {
 
 // Create schedule. Phase 2.2m: schedule.workspace_id is inherited from the
 // target (device or group). Single workspace lookup also enforces caller's
-// write access. Closes 4 pre-existing leaks: content / widget / layout /
-// playlist were accepted with NO ownership check at all.
+// write access. Closes pre-existing leaks: content / layout / playlist
+// were accepted with NO ownership check at all.
 router.post('/', (req, res) => {
-  const { device_id, group_id, zone_id, content_id, widget_id, layout_id, playlist_id, title, start_time, end_time,
+  const { device_id, group_id, zone_id, content_id, layout_id, playlist_id, title, start_time, end_time,
           timezone, recurrence, recurrence_end, priority, color } = req.body;
 
   if (!start_time || !end_time) {
@@ -179,10 +177,9 @@ router.post('/', (req, res) => {
   }
 
   // Payload refs must live in the same workspace. Platform templates
-  // (workspace_id IS NULL) on content / widget / layout / playlist are allowed.
+  // (workspace_id IS NULL) on content / layout / playlist are allowed.
   const refChecks = [
     ['content',   content_id,  true],
-    ['widgets',   widget_id,   true],
     ['layouts',   layout_id,   true],
     ['playlists', playlist_id, true],
   ];
@@ -194,10 +191,10 @@ router.post('/', (req, res) => {
 
   const id = uuidv4();
   db.prepare(`
-    INSERT INTO schedules (id, user_id, workspace_id, device_id, group_id, zone_id, content_id, widget_id, layout_id, playlist_id, title,
+    INSERT INTO schedules (id, user_id, workspace_id, device_id, group_id, zone_id, content_id, layout_id, playlist_id, title,
       start_time, end_time, timezone, recurrence, recurrence_end, priority, color)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, req.user.id, targetWorkspaceId, device_id || null, group_id || null, zone_id || null, content_id || null, widget_id || null,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, req.user.id, targetWorkspaceId, device_id || null, group_id || null, zone_id || null, content_id || null,
     layout_id || null, playlist_id || null, title || '', start_time, end_time, timezone || 'UTC',
     recurrence || null, recurrence_end || null, priority || 0, color || '#3B82F6');
 
@@ -222,13 +219,12 @@ router.put('/:id', requireScheduleWrite, (req, res) => {
 
   // For each field changing to a non-null value, verify the referenced row
   // lives in the schedule's workspace. Devices and groups must match exactly
-  // (no NULL workspace path); content / widget / layout / playlist may be
+  // (no NULL workspace path); content / layout / playlist may be
   // platform templates (NULL workspace_id).
   const ownershipChecks = [
     ['devices',       req.body.device_id,   schedule.device_id,   false],
     ['device_groups', req.body.group_id,    schedule.group_id,    false],
     ['content',       req.body.content_id,  schedule.content_id,  true],
-    ['widgets',       req.body.widget_id,   schedule.widget_id,   true],
     ['layouts',       req.body.layout_id,   schedule.layout_id,   true],
     ['playlists',     req.body.playlist_id, schedule.playlist_id, true],
   ];
@@ -238,7 +234,7 @@ router.put('/:id', requireScheduleWrite, (req, res) => {
     if (err) return res.status(err.status).json({ error: err.error });
   }
 
-  const fields = ['device_id', 'group_id', 'zone_id', 'content_id', 'widget_id', 'layout_id', 'playlist_id', 'title',
+  const fields = ['device_id', 'group_id', 'zone_id', 'content_id', 'layout_id', 'playlist_id', 'title',
     'start_time', 'end_time', 'timezone', 'recurrence', 'recurrence_end', 'priority', 'enabled', 'color'];
   const updates = [];
   const values = [];

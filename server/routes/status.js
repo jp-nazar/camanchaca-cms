@@ -92,7 +92,6 @@ router.get('/export', (req, res) => {
   const devicePlaceholders = deviceIds.map(() => '?').join(',') || "'__none__'";
 
   const content = db.prepare('SELECT id, filename, mime_type, file_size, duration_sec, remote_url, width, height, created_at FROM content WHERE user_id = ?').all(userId);
-  const widgets = db.prepare('SELECT id, widget_type, name, config, created_at FROM widgets WHERE user_id = ?').all(userId);
   const layouts = db.prepare('SELECT id, name, width, height, is_template, template_category, created_at FROM layouts WHERE user_id = ? AND is_template = 0').all(userId);
   const layoutIds = layouts.map(l => l.id);
   const layoutPlaceholders = layoutIds.map(() => '?').join(',') || "'__none__'";
@@ -101,15 +100,14 @@ router.get('/export', (req, res) => {
   const playlists = db.prepare('SELECT id, name, description, is_auto_generated, created_at, updated_at FROM playlists WHERE user_id = ?').all(userId);
   const playlistIds = playlists.map(p => p.id);
   const playlistPlaceholders = playlistIds.map(() => '?').join(',') || "'__none__'";
-  const playlistItems = playlistIds.length ? db.prepare(`SELECT id, playlist_id, content_id, widget_id, sort_order, duration_sec FROM playlist_items WHERE playlist_id IN (${playlistPlaceholders})`).all(...playlistIds) : [];
+  const playlistItems = playlistIds.length ? db.prepare(`SELECT id, playlist_id, content_id, sort_order, duration_sec FROM playlist_items WHERE playlist_id IN (${playlistPlaceholders})`).all(...playlistIds) : [];
 
-  const schedules = db.prepare('SELECT id, device_id, group_id, zone_id, content_id, widget_id, layout_id, playlist_id, title, start_time, end_time, timezone, recurrence, recurrence_end, priority, enabled, color, created_at FROM schedules WHERE user_id = ?').all(userId);
+  const schedules = db.prepare('SELECT id, device_id, group_id, zone_id, content_id, layout_id, playlist_id, title, start_time, end_time, timezone, recurrence, recurrence_end, priority, enabled, color, created_at FROM schedules WHERE user_id = ?').all(userId);
   const videoWalls = db.prepare('SELECT * FROM video_walls WHERE user_id = ?').all(userId);
   const wallIds = videoWalls.map(w => w.id);
   const wallPlaceholders = wallIds.map(() => '?').join(',') || "'__none__'";
   const wallDevices = wallIds.length ? db.prepare(`SELECT * FROM video_wall_devices WHERE wall_id IN (${wallPlaceholders})`).all(...wallIds) : [];
 
-  const kioskPages = db.prepare('SELECT id, name, config, created_at FROM kiosk_pages WHERE user_id = ?').all(userId);
   const deviceGroups = db.prepare('SELECT id, name, color, created_at FROM device_groups WHERE user_id = ?').all(userId);
   const groupIds = deviceGroups.map(g => g.id);
   const groupPlaceholders = groupIds.map(() => '?').join(',') || "'__none__'";
@@ -124,7 +122,6 @@ router.get('/export', (req, res) => {
       return { ...d, playlist_id: dev?.playlist_id || null };
     }),
     content,
-    widgets: widgets.map(w => ({ ...w, config: JSON.parse(w.config || '{}') })),
     layouts,
     layout_zones: layoutZones,
     playlists,
@@ -132,7 +129,6 @@ router.get('/export', (req, res) => {
     schedules,
     video_walls: videoWalls,
     video_wall_devices: wallDevices,
-    kiosk_pages: kioskPages.map(k => ({ ...k, config: JSON.parse(k.config || '{}') })),
     device_groups: deviceGroups,
     device_group_members: groupMembers,
     alert_configs: alertConfigs.map(a => ({ ...a, config: JSON.parse(a.config || '{}') })),
@@ -275,10 +271,10 @@ router.post('/import', importUpload.single('file'), async (req, res) => {
   }
   const isV2 = data.format === 'camanchaca-export-v2';
   const uuid = require('uuid');
-  const stats = { devices: 0, content: 0, widgets: 0, layouts: 0, playlists: 0, schedules: 0, video_walls: 0, kiosk_pages: 0, device_groups: 0 };
+  const stats = { devices: 0, content: 0, layouts: 0, playlists: 0, schedules: 0, video_walls: 0, device_groups: 0 };
 
   // Map old IDs to new IDs
-  const idMap = { devices: {}, content: {}, widgets: {}, layouts: {}, zones: {}, playlists: {}, groups: {}, walls: {}, kiosk: {} };
+  const idMap = { devices: {}, content: {}, layouts: {}, zones: {}, playlists: {}, groups: {}, walls: {} };
 
   const importDb = db.transaction(() => {
     // Import devices (as offline, unlinked - they'll need re-pairing)
@@ -327,15 +323,6 @@ router.post('/import', importUpload.single('file'), async (req, res) => {
       stats.content++;
     }
 
-    // Import widgets
-    for (const w of (data.widgets || [])) {
-      const newId = uuid.v4();
-      idMap.widgets[w.id] = newId;
-      const config = typeof w.config === 'string' ? w.config : JSON.stringify(w.config || {});
-      db.prepare(`INSERT INTO widgets (id, user_id, workspace_id, widget_type, name, config, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(newId, userId, workspaceId, w.widget_type, w.name, config, w.created_at || Math.floor(Date.now() / 1000));
-      stats.widgets++;
-    }
-
     // Import layouts and zones
     for (const l of (data.layouts || [])) {
       const newId = uuid.v4();
@@ -363,9 +350,8 @@ router.post('/import', importUpload.single('file'), async (req, res) => {
         const playlistId = idMap.playlists[pi.playlist_id];
         if (!playlistId) continue;
         const contentId = pi.content_id ? idMap.content[pi.content_id] : null;
-        const widgetId = pi.widget_id ? idMap.widgets[pi.widget_id] : null;
-        if (!contentId && !widgetId) continue;
-        db.prepare('INSERT INTO playlist_items (playlist_id, content_id, widget_id, sort_order, duration_sec) VALUES (?, ?, ?, ?, ?)').run(playlistId, contentId, widgetId, pi.sort_order || 0, pi.duration_sec || 10);
+        if (!contentId) continue;
+        db.prepare('INSERT INTO playlist_items (playlist_id, content_id, sort_order, duration_sec) VALUES (?, ?, ?, ?)').run(playlistId, contentId, pi.sort_order || 0, pi.duration_sec || 10);
       }
       // Set device playlist_id references
       for (const d of (data.devices || [])) {
@@ -386,7 +372,7 @@ router.post('/import', importUpload.single('file'), async (req, res) => {
       if (!devId && !grpId) continue;
       const newId = uuid.v4();
       const playlistId = s.playlist_id ? (idMap.playlists[s.playlist_id] || null) : null;
-      db.prepare(`INSERT INTO schedules (id, user_id, device_id, group_id, zone_id, content_id, widget_id, layout_id, playlist_id, title, start_time, end_time, timezone, recurrence, recurrence_end, priority, enabled, color, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(newId, userId, devId, grpId, s.zone_id ? (idMap.zones[s.zone_id] || null) : null, s.content_id ? (idMap.content[s.content_id] || null) : null, s.widget_id ? (idMap.widgets[s.widget_id] || null) : null, s.layout_id ? (idMap.layouts[s.layout_id] || null) : null, playlistId, s.title || '', s.start_time, s.end_time, s.timezone || 'UTC', s.recurrence || null, s.recurrence_end || null, s.priority || 0, s.enabled !== undefined ? s.enabled : 1, s.color || '#3B82F6', s.created_at || Math.floor(Date.now() / 1000));
+      db.prepare(`INSERT INTO schedules (id, user_id, device_id, group_id, zone_id, content_id, layout_id, playlist_id, title, start_time, end_time, timezone, recurrence, recurrence_end, priority, enabled, color, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(newId, userId, devId, grpId, s.zone_id ? (idMap.zones[s.zone_id] || null) : null, s.content_id ? (idMap.content[s.content_id] || null) : null, s.layout_id ? (idMap.layouts[s.layout_id] || null) : null, playlistId, s.title || '', s.start_time, s.end_time, s.timezone || 'UTC', s.recurrence || null, s.recurrence_end || null, s.priority || 0, s.enabled !== undefined ? s.enabled : 1, s.color || '#3B82F6', s.created_at || Math.floor(Date.now() / 1000));
       stats.schedules++;
     }
 
@@ -402,15 +388,6 @@ router.post('/import', importUpload.single('file'), async (req, res) => {
       const devId = idMap.devices[wd.device_id];
       if (!wallId || !devId) continue;
       db.prepare(`INSERT INTO video_wall_devices (wall_id, device_id, grid_col, grid_row, rotation) VALUES (?, ?, ?, ?, ?)`).run(wallId, devId, wd.grid_col, wd.grid_row, wd.rotation || 0);
-    }
-
-    // Import kiosk pages
-    for (const k of (data.kiosk_pages || [])) {
-      const newId = uuid.v4();
-      idMap.kiosk[k.id] = newId;
-      const config = typeof k.config === 'string' ? k.config : JSON.stringify(k.config || {});
-      db.prepare(`INSERT INTO kiosk_pages (id, user_id, workspace_id, name, config, created_at) VALUES (?, ?, ?, ?, ?, ?)`).run(newId, userId, workspaceId, k.name, config, k.created_at || Math.floor(Date.now() / 1000));
-      stats.kiosk_pages++;
     }
 
     // Import device groups
@@ -480,21 +457,20 @@ router.post('/import', importUpload.single('file'), async (req, res) => {
         const items = [];
         for (const a of assignments) {
           const contentId = a.content_id ? idMap.content[a.content_id] : null;
-          const widgetId = a.widget_id ? idMap.widgets[a.widget_id] : null;
-          if (!contentId && !widgetId) continue;
+          if (!contentId) continue;
           let duration = a.duration_sec || 10;
           if (contentId) {
             const probed = await probeImportedContent(contentId);
             if (probed) duration = probed;
           }
-          items.push({ contentId, widgetId, sort_order: a.sort_order || 0, duration });
+          items.push({ contentId, sort_order: a.sort_order || 0, duration });
         }
 
         db.prepare('INSERT INTO playlists (id, user_id, workspace_id, name, description, is_auto_generated) VALUES (?, ?, ?, ?, ?, 1)')
           .run(playlistId, userId, workspaceId, `${devName} (imported)`, 'Converted from v1 assignments');
         for (const item of items) {
-          db.prepare('INSERT INTO playlist_items (playlist_id, content_id, widget_id, sort_order, duration_sec) VALUES (?, ?, ?, ?, ?)')
-            .run(playlistId, item.contentId, item.widgetId, item.sort_order, item.duration);
+          db.prepare('INSERT INTO playlist_items (playlist_id, content_id, sort_order, duration_sec) VALUES (?, ?, ?, ?)')
+            .run(playlistId, item.contentId, item.sort_order, item.duration);
         }
         db.prepare('UPDATE devices SET playlist_id = ? WHERE id = ?').run(playlistId, devId);
         stats.playlists++;

@@ -53,9 +53,7 @@ module.exports = {
   // to Graph). Intended for local dev that pulls fresh prod DB copies - keeps
   // us from accidentally emailing real prod users. UNSET on prod systemd unit.
   graphDevRestrictTo: process.env.GRAPH_DEV_RESTRICT_TO || '',
-  // Always self-hosted — no billing, no subscriptions, unlimited everything
   selfHosted: true,
-  // Disable public registration (OAuth auto-signup is also blocked when set).
-  // First-user setup is still allowed so a fresh install can be initialized.
+  // First-user setup is allowed so a fresh install can be initialized.
   disableRegistration: ['true', '1'].includes(String(process.env.DISABLE_REGISTRATION || '').toLowerCase()),
 };

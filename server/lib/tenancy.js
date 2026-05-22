@@ -5,7 +5,6 @@
 //
 //   req.workspaceId      string | null   the workspace this request operates in
 //   req.workspace        object | null   the full workspaces row
-//   req.organizationId   string | null   parent org of req.workspace
 //   req.workspaceRole    string | null   'workspace_admin' | 'workspace_editor' | 'workspace_viewer'
 //   req.isPlatformAdmin  boolean         shortcut for req.user.role === 'platform_admin'
 //
@@ -103,12 +102,10 @@ function resolveTenancy(req, res, next) {
   if (workspace) {
     req.workspaceId = workspace.id;
     req.workspace = workspace;
-    req.organizationId = workspace.organization_id;
     req.workspaceRole = context.workspaceRole;
   } else {
     req.workspaceId = null;
     req.workspace = null;
-    req.organizationId = null;
     req.workspaceRole = null;
   }
 

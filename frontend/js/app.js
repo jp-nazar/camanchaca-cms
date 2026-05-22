@@ -8,16 +8,13 @@ import * as login from './views/login.js';
 
 import * as layoutEditor from './views/layout-editor.js';
 import * as schedule from './views/schedule.js';
-import * as widgets from './views/widgets.js';
 import * as videoWall from './views/video-wall.js';
 import * as reports from './views/reports.js';
 import * as activity from './views/activity.js';
-import * as kiosk from './views/kiosk.js';
+import * as integrations from './views/integrations.js';
 import * as onboarding from './views/onboarding.js';
 import * as help from './views/help.js';
-import * as teams from './views/teams.js';
 import * as admin from './views/admin.js';
-import * as designer from './views/designer.js';
 import * as playlists from './views/playlists.js';
 
 import { isPlatformAdmin } from './utils.js';
@@ -33,14 +30,11 @@ const NAV_LABEL_KEYS = {
   content: 'nav.content',
   playlists: 'nav.playlists',
   layouts: 'nav.layouts',
-  widgets: 'nav.widgets',
   schedule: 'nav.schedule',
   walls: 'nav.walls',
   reports: 'nav.reports',
-  kiosk: 'nav.kiosk',
-  designer: 'nav.designer',
   activity: 'nav.activity',
-  teams: 'nav.teams',
+  integrations: 'nav.integrations',
   help: 'nav.help',
   settings: 'nav.settings',
 
@@ -83,10 +77,8 @@ function getCurrentUser() {
   } catch { return null; }
 }
 
-// Refresh the cached user from the server. The server reads plan_id fresh
-// from the DB on every request, but the frontend only wrote `user` into
-// localStorage at login — so plan/role changes made by an admin weren't
-// visible until the user logged out and back in.
+// Refresh the cached user from the server. Role changes made by an admin
+// weren't visible until the user logged out and back in.
 async function refreshCurrentUser() {
   const token = localStorage.getItem('token');
   if (!token) return;
@@ -159,12 +151,10 @@ function route() {
     else if ((hash.startsWith('#/layout') || hash === '#/layouts') && link.dataset.view === 'layouts') link.classList.add('active');
     else if ((hash === '#/playlists' || hash.startsWith('#/playlists/')) && link.dataset.view === 'playlists') link.classList.add('active');
     else if (hash === '#/schedule' && link.dataset.view === 'schedule') link.classList.add('active');
-    else if (hash === '#/widgets' && link.dataset.view === 'widgets') link.classList.add('active');
     else if ((hash.startsWith('#/wall') || hash === '#/walls') && link.dataset.view === 'walls') link.classList.add('active');
     else if (hash === '#/reports' && link.dataset.view === 'reports') link.classList.add('active');
     else if (hash === '#/activity' && link.dataset.view === 'activity') link.classList.add('active');
-    else if (hash === '#/designer' && link.dataset.view === 'designer') link.classList.add('active');
-    else if ((hash === '#/kiosk' || hash.startsWith('#/kiosk/')) && link.dataset.view === 'kiosk') link.classList.add('active');
+    else if (hash === '#/integrations' && link.dataset.view === 'integrations') link.classList.add('active');
     else if (hash === '#/help' && link.dataset.view === 'help') link.classList.add('active');
     else if (hash.startsWith('#/device/') && link.dataset.view === 'dashboard') link.classList.add('active');
   });
@@ -189,27 +179,18 @@ function route() {
   } else if (hash === '#/schedule') {
     currentView = schedule;
     schedule.render(app);
-  } else if (hash === '#/widgets') {
-    currentView = widgets;
-    widgets.render(app);
+  } else if (hash === '#/integrations') {
+    currentView = integrations;
+    integrations.render(app);
   } else if (hash === '#/walls' || hash.startsWith('#/wall/')) {
     currentView = videoWall;
     videoWall.render(app);
   } else if (hash === '#/reports') {
     currentView = reports;
     reports.render(app);
-  } else if (hash === '#/kiosk' || hash.startsWith('#/kiosk/')) {
-    currentView = kiosk;
-    kiosk.render(app);
-  } else if (hash === '#/designer') {
-    currentView = designer;
-    designer.render(app);
   } else if (hash === '#/activity') {
     currentView = activity;
     activity.render(app);
-  } else if (hash === '#/teams' || hash.startsWith('#/team/')) {
-    currentView = teams;
-    teams.render(app);
   } else if (hash === '#/help' || hash.startsWith('#/help')) {
     currentView = help;
     help.render(app);

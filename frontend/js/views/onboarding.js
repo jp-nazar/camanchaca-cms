@@ -79,9 +79,6 @@ function getSteps() {
             <li>${'Agrega más contenido en la <strong>Biblioteca de contenido</strong>'}</li>
             <li>${'Crea diseños multizona en <strong>Diseños</strong>'}</li>
             <li>${'Configura un horario en el calendario de <strong>Horario</strong>'}</li>
-            <li>${'Agrega widgets en vivo (reloj, clima, ticker) en <strong>Widgets</strong>'}</li>
-            <li>${'Crea pantallas interactivas en <strong>Kiosco</strong>'}</li>
-            <li>${'Diseña contenido personalizado en el <strong>Diseñador</strong>'}</li>
           </ul>
         </div>`,
       action: null

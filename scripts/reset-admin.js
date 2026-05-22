@@ -35,7 +35,7 @@ To use: Open your Camanchaca CMS instance, open browser
 console (F12), and run:
 
   localStorage.setItem('token', '${token}');
-  localStorage.setItem('user', '${JSON.stringify({ id: 'recovery-' + nonce, email: 'admin@localhost', name: 'Recovery Admin', role: 'admin', plan_id: 'enterprise' }).replace(/'/g, "\\'")}');
+  localStorage.setItem('user', '${JSON.stringify({ id: 'recovery-' + nonce, email: 'admin@localhost', name: 'Recovery Admin', role: 'admin' }).replace(/'/g, "\\'")}');
   location.reload();
 
 Or use the API directly:
