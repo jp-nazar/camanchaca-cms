@@ -1,0 +1,46 @@
+# Dependencies
+server/node_modules/
+
+# Environment
+server/.env
+server/certs/.jwt_secret
+
+# Database
+server/db/*.db
+server/db/*.db-shm
+server/db/*.db-wal
+server/db/*.pre-migration-*
+
+# Uploads
+server/uploads/content/*
+server/uploads/screenshots/*
+!server/uploads/content/.gitkeep
+!server/uploads/screenshots/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build
+android/app/build/
+android/build/
+android/.gradle/
+
+# Keys
+*.pem
+*.jks
+camanchaca-cms-key.pem
+
+# Temporary
+tmp/
+temp/
