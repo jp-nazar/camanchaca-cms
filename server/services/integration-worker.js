@@ -281,11 +281,13 @@ function pushToAffectedDevices(contentId) {
     let snapshot;
     try { snapshot = JSON.parse(pl.published_snapshot); } catch { continue; }
     let changed = false;
+    const version = Date.now();
     for (const item of snapshot) {
       if (item.content_id === contentId) {
         item.filepath = content.filepath;
         item.filename = content.filename;
         item.file_size = content.file_size;
+        item.content_version = version;
         changed = true;
       }
     }

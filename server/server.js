@@ -348,7 +348,7 @@ app.use('/api/status', require('./routes/status'));
 // APK version check endpoint (public, used by devices to check for updates)
 app.get('/api/update/check', (req, res) => {
   const currentVersion = req.query.version;
-  const apkPath = path.join(__dirname, '..', 'ScreenPlayer.apk');
+  const apkPath = path.join(__dirname, '..', 'camanchaca-player.apk');
   const apkExists = fs.existsSync(apkPath);
   const apkSize = apkExists ? fs.statSync(apkPath).size : 0;
   const apkModified = apkExists ? fs.statSync(apkPath).mtimeMs : 0;

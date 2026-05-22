@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Monitor body -->
+    <path
+        android:fillColor="#3B82F6"
+        android:pathData="M30,38h48v28h-48z" />
+    <!-- Monitor screen inner -->
+    <path
+        android:fillColor="#1E293B"
+        android:pathData="M34,42h40v20h-40z" />
+    <!-- Stand -->
+    <path
+        android:fillColor="#3B82F6"
+        android:pathData="M48,66h12v4h-12z" />
+    <!-- Base -->
+    <path
+        android:fillColor="#3B82F6"
+        android:pathData="M40,70h28v3h-28z" />
+    <!-- Play triangle -->
+    <path
+        android:fillColor="#3B82F6"
+        android:pathData="M48,47l16,8l-16,8z" />
+</vector>

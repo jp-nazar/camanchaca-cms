@@ -12,7 +12,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="RemoteDisplay Setup"
+        android:text="Camanchaca CMS Setup"
         android:textColor="#3B82F6"
         android:textSize="32sp"
         android:textStyle="bold"

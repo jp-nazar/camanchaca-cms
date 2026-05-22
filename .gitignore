@@ -36,6 +36,12 @@ android/app/build/
 android/build/
 android/.gradle/
 
+# Machine-specific SDK path
+android/local.properties
+
+# APK artifacts
+*.apk
+
 # Keys
 *.pem
 *.jks

@@ -225,7 +225,7 @@ class MainActivity : AppCompatActivity() {
                 // Build a signature of current assignments to detect content changes
                 val assignmentSig = (0 until assignments.length()).map { i ->
                     val a = assignments.getJSONObject(i)
-                    "${a.optString("content_id")}:${a.optString("zone_id")}:${a.optString("widget_id")}"
+                    "${a.optString("content_id")}:${a.optString("zone_id")}:${a.optString("widget_id")}:${a.optLong("content_version", 0)}"
                 }.sorted().joinToString("|")
                 val changed = assignmentSig != zoneManager?.lastAssignmentSig
 
@@ -263,6 +263,7 @@ class MainActivity : AppCompatActivity() {
                     val contentId = item.getString("content_id")
                     val filename = item.optString("filename", "content")
                     val remoteUrl = item.optString("remote_url", null)
+                    val contentVersion = item.optLong("content_version", 0L)
 
                     // Skip remote URL content - it streams directly
                     if (!remoteUrl.isNullOrEmpty()) {
@@ -270,11 +271,11 @@ class MainActivity : AppCompatActivity() {
                         continue
                     }
 
-                    if (!contentCache.isContentCached(contentId)) {
+                    if (!contentCache.isContentCached(contentId, contentVersion)) {
                         Log.i("MainActivity", "Downloading content: $filename")
                         var downloaded = false
                         for (attempt in 1..3) {
-                            val file = contentCache.downloadContent(config.serverUrl, contentId, filename)
+                            val file = contentCache.downloadContent(config.serverUrl, contentId, filename, contentVersion)
                             if (file != null) {
                                 wsService?.sendContentAck(contentId, "ready")
                                 downloaded = true
@@ -442,7 +443,7 @@ class MainActivity : AppCompatActivity() {
             Log.w("MainActivity", "Content not cached: ${item.contentId}, downloading...")
             showStatus("Downloading ${item.filename}...")
             thread {
-                val downloaded = contentCache.downloadContent(config.serverUrl, item.contentId, item.filename)
+                val downloaded = contentCache.downloadContent(config.serverUrl, item.contentId, item.filename, item.contentVersion)
                 handler.post {
                     if (downloaded != null) {
                         playFile(item, downloaded)

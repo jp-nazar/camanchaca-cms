@@ -12,7 +12,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="RemoteDisplay"
+        android:text="Camanchaca CMS"
         android:textColor="#3B82F6"
         android:textSize="36sp"
         android:textStyle="bold"
@@ -21,7 +21,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Digital Signage Player"
+        android:text="Digital Signage"
         android:textColor="#94A3B8"
         android:textSize="16sp"
         android:layout_marginBottom="48dp" />

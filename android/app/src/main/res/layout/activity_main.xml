@@ -50,12 +50,12 @@
             android:src="@android:drawable/ic_media_play"
             android:layout_marginBottom="16dp"
             android:alpha="0.3"
-            android:contentDescription="Logo" />
+            android:contentDescription="Camanchaca logo" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="RemoteDisplay"
+            android:text="Camanchaca CMS"
             android:textColor="#3B82F6"
             android:textSize="28sp"
             android:textStyle="bold"

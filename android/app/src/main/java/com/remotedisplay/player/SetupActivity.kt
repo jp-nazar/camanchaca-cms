@@ -132,7 +132,7 @@ class SetupActivity : AppCompatActivity() {
 
         // Update continue button text
         val allGood = accessibilityEnabled && canInstall
-        continueBtn.text = if (allGood) "Continue to Setup" else "Continue Anyway"
+        continueBtn.text = if (allGood) "Continue" else "Continue Anyway"
     }
 
     private fun isAccessibilityEnabled(): Boolean {

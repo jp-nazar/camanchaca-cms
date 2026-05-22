@@ -18,16 +18,25 @@ class ContentCache(private val context: Context) {
 
     fun getCachedFile(contentId: String): File? {
         val files = cacheDir.listFiles { _, name -> name.startsWith(contentId) }
-        return files?.firstOrNull()?.takeIf { it.exists() && it.length() > 0 }
+        // Return newest file (favors versioned filenames over unversioned)
+        return files?.sortedByDescending { it.name }?.firstOrNull()?.takeIf { it.exists() && it.length() > 0 }
     }
 
     fun isContentCached(contentId: String): Boolean {
         return getCachedFile(contentId) != null
     }
 
-    fun downloadContent(serverUrl: String, contentId: String, filename: String): File? {
+    fun isContentCached(contentId: String, contentVersion: Long): Boolean {
+        if (contentVersion == 0L) return isContentCached(contentId)
+        return cacheDir.listFiles { _, name ->
+            name.startsWith("${contentId}_v${contentVersion}.")
+        }?.any { it.exists() && it.length() > 0 } == true
+    }
+
+    fun downloadContent(serverUrl: String, contentId: String, filename: String, contentVersion: Long = 0): File? {
         try {
-            val url = "${serverUrl}/api/content/${contentId}/file"
+            val versionParam = if (contentVersion > 0) "?v=${contentVersion}" else ""
+            val url = "${serverUrl}/api/content/${contentId}/file${versionParam}"
             val request = Request.Builder().url(url).build()
             val response = client.newCall(request).execute()
 
@@ -37,7 +46,15 @@ class ContentCache(private val context: Context) {
             }
 
             val ext = filename.substringAfterLast('.', "mp4")
-            val file = File(cacheDir, "${contentId}.${ext}")
+            val versionSuffix = if (contentVersion > 0) "_v${contentVersion}" else ""
+            val file = File(cacheDir, "${contentId}${versionSuffix}.${ext}")
+
+            // Remove stale cached versions for this content
+            cacheDir.listFiles { _, name ->
+                name.startsWith("${contentId}_v") && name != file.name
+            }?.forEach { it.delete() }
+            // Remove old unversioned file
+            File(cacheDir, "${contentId}.${ext}").delete()
 
             response.body?.byteStream()?.use { input ->
                 FileOutputStream(file).use { output ->

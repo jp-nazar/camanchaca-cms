@@ -17,7 +17,8 @@ data class PlaylistItem(
     val sortOrder: Int,
     val enabled: Boolean = true,
     val remoteUrl: String? = null,
-    val muted: Boolean = false
+    val muted: Boolean = false,
+    val contentVersion: Long = 0
 ) {
     val isRemote: Boolean get() = !remoteUrl.isNullOrEmpty()
 }
@@ -60,15 +61,16 @@ class PlaylistController(
                     sortOrder = obj.optInt("sort_order", 0),
                     enabled = obj.optInt("enabled", 1) == 1,
                     remoteUrl = if (obj.isNull("remote_url")) null else obj.optString("remote_url", "").ifEmpty { null },
-                    muted = obj.optInt("muted", 0) == 1
+                    muted = obj.optInt("muted", 0) == 1,
+                    contentVersion = obj.optLong("content_version", 0)
                 )
             )
         }
 
-        // Check if playlist actually changed
-        val oldContentIds = items.map { it.contentId }
-        val newContentIds = newItems.map { it.contentId }
-        val playlistChanged = oldContentIds != newContentIds
+        // Check if playlist actually changed (include content_version to detect integration refreshes)
+        val oldSignature = items.map { "${it.contentId}:${it.contentVersion}" }
+        val newSignature = newItems.map { "${it.contentId}:${it.contentVersion}" }
+        val playlistChanged = oldSignature != newSignature
 
         if (!playlistChanged && items.isNotEmpty()) {
             Log.i("PlaylistController", "Playlist unchanged (${items.size} items), not interrupting playback")
