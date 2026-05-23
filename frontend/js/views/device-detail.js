@@ -5,6 +5,7 @@ import { showToast } from '../components/toast.js';
 import { esc } from '../utils.js';
 
 let currentDevice = null;
+let simplified = false;
 let statusHandler = null;
 let screenshotHandler = null;
 let playbackHandler = null;
@@ -27,7 +28,8 @@ function formatUptime(seconds) {
   return `${m}m`;
 }
 
-export function render(container, deviceId) {
+export function render(container, deviceId, opts = {}) {
+  simplified = opts.uiSimplified || false;
   container.innerHTML = `
     <div class="device-detail">
       <a href="#/" class="back-link">
@@ -134,8 +136,10 @@ async function loadDevice(deviceId, activeTab = null) {
       <div class="tabs">
         <div class="tab active" data-tab="nowplaying">${'Reproducción actual'} <span class="help-tip" data-tip="${'Captura en vivo de lo que se muestra ahora en este dispositivo.'}">?</span></div>
         <div class="tab" data-tab="playlist">${'Lista'} <span class="help-tip" data-tip="${'Contenido asignado a este dispositivo. Arrastra para reordenar. Agrega medios.'}">?</span></div>
+        ${!simplified ? `
         <div class="tab" data-tab="info">${'Información del dispositivo'} <span class="help-tip" data-tip="${'Telemetría de hardware, orientación, notas y controles del dispositivo.'}">?</span></div>
         <div class="tab" data-tab="remote">${'Control remoto'} <span class="help-tip" data-tip="${'Visualiza la pantalla del dispositivo en tiempo real y envía pulsaciones. Funciona en la APK de Android y el reproductor web.'}">?</span></div>
+        ` : ''}
       </div>
 
       <!-- Now Playing Tab -->
@@ -211,6 +215,7 @@ async function loadDevice(deviceId, activeTab = null) {
         </div>
       </div>
 
+      ${!simplified ? `
       <!-- Info Tab -->
       <div class="tab-content" id="tab-info">
         <div class="info-grid">
@@ -417,6 +422,7 @@ async function loadDevice(deviceId, activeTab = null) {
           </div>
         </div>
       </div>
+    ` : ''}
     `;
 
     // Global key/command handlers for remote

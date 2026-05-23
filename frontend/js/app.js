@@ -195,7 +195,7 @@ function route() {
   } else if (hash.startsWith('#/device/')) {
     const deviceId = hash.split('#/device/')[1].split('/')[0];
     currentView = deviceDetail;
-    deviceDetail.render(app, deviceId);
+    deviceDetail.render(app, deviceId, { uiSimplified });
   } else if (hash === '#/content') {
     currentView = contentLibrary;
     contentLibrary.render(app);
