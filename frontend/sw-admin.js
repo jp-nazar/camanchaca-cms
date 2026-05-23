@@ -2,7 +2,7 @@
 // caches that were shipping stale JS to existing clients (the server already
 // sends Cache-Control: no-cache + ETag, but the previous SW intercepted before
 // any of that mattered). Strategy is now network-first with offline fallback.
-const CACHE = 'rd-admin-v3';
+const CACHE = 'rd-admin-v4';
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll([
