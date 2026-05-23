@@ -20,6 +20,8 @@ import * as playlists from './views/playlists.js';
 import { isPlatformAdmin } from './utils.js';
 import { renderWorkspaceSwitcher } from './components/workspace-switcher.js';
 
+let uiSimplified = false;
+
 const app = document.getElementById('app');
 const sidebar = document.querySelector('.sidebar');
 let currentView = null;
@@ -94,6 +96,27 @@ async function refreshCurrentUser() {
   } catch {}
 }
 
+async function fetchUiConfig() {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const res = await fetch('/api/config/ui', { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return;
+    const config = await res.json();
+    uiSimplified = config.simplified;
+    if (uiSimplified) applySimplifiedUi();
+  } catch {}
+}
+
+function applySimplifiedUi() {
+  const ids = ['wallsNavItem', 'integrationsNavItem', 'activityNavItem', 'helpNavItem'];
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  const hash = window.location.hash;
+  if (['#/walls', '#/integrations', '#/activity', '#/help'].includes(hash) || hash.startsWith('#/wall/')) {
+    window.location.hash = '#/';
+  }
+}
+
 function route() {
   // Cleanup previous view
   if (currentView && currentView.cleanup) currentView.cleanup();
@@ -140,6 +163,14 @@ function route() {
 
   // Update user info in sidebar
   updateSidebarUser();
+
+  // Redirect if in simplified mode and trying to access a hidden view
+  if (uiSimplified) {
+    if (hash === '#/walls' || hash === '#/integrations' || hash === '#/activity' || hash === '#/help' || hash.startsWith('#/wall/')) {
+      window.location.hash = '#/';
+      return;
+    }
+  }
 
   const navLinks = document.querySelectorAll('.nav-link');
   navLinks.forEach(link => {
@@ -199,7 +230,7 @@ function route() {
     admin.render(app);
   } else if (hash === '#/settings') {
     currentView = settings;
-    settings.render(app);
+    settings.render(app, { uiSimplified });
   } else {
     currentView = dashboard;
     dashboard.render(app);
@@ -257,7 +288,10 @@ window.addEventListener('language-changed', () => {
 
 if (isAuthenticated()) {
   connectSocket();
-  refreshCurrentUser().then(() => updateSidebarUser());
+  refreshCurrentUser().then(() => {
+    updateSidebarUser();
+    fetchUiConfig();
+  });
 }
 
 // Refresh the cached user on every route transition so plan/role changes

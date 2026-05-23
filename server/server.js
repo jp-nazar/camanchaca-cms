@@ -70,7 +70,7 @@ const dashboardCsp = helmet.contentSecurityPolicy({
     mediaSrc: ["'self'", 'blob:', 'https:'],
     connectSrc: ["'self'", 'wss:', 'ws:', 'https:'],
     fontSrc: ["'self'", 'data:'],
-    frameSrc: ["'self'", 'https://www.youtube.com', 'https://youtube.com'],
+    frameSrc: ["'self'"],
     objectSrc: ["'none'"],
     baseUri: ["'self'"],
     formAction: ["'self'"],
@@ -337,6 +337,11 @@ app.get('/api/version', (req, res) => {
   let version = '1.2.0';
   try { version = fs.readFileSync(path.join(__dirname, '..', 'VERSION'), 'utf8').trim(); } catch {}
   res.json({ hash: frontendHash, version });
+});
+
+// UI configuration flags (used to simplify/hide features in the frontend)
+app.get('/api/config/ui', requireAuth, (req, res) => {
+  res.json({ simplified: config.uiSimplified });
 });
 
 // Public status page

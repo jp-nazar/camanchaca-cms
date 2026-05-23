@@ -4,7 +4,7 @@ import { showToast } from '../components/toast.js';
 import { esc, isPlatformAdmin } from '../utils.js';
 
 
-export async function render(container) {
+export async function render(container, opts = {}) {
   const serverUrl = `${window.location.protocol}//${window.location.host}`;
   // Fetch fresh user from the server — role may have been changed
   // by an admin since login. Fall back to localStorage if the request fails.
@@ -53,35 +53,7 @@ export async function render(container) {
 
     ${isSuperAdmin ? `<p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">${'Las herramientas de administración están en la'} <a href="#/admin" style="color:var(--accent)">${'Administrador'}</a> ${'.'}</p>` : ''}
 
-    <div class="settings-section">
-      <h3>${'Información del servidor'}</h3>
-      <div class="info-grid">
-        <div class="info-card">
-          <div class="info-card-label">${'URL del servidor'}</div>
-          <div class="info-card-value small">${serverUrl}</div>
-          <p style="font-size:11px;color:var(--text-muted);margin-top:4px">${'Usa esta URL al configurar la app de Android'}</p>
-        </div>
-        <div class="info-card">
-          <div class="info-card-label">${'Endpoint de la API'}</div>
-          <div class="info-card-value small">${serverUrl}/api</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="settings-section">
-      <h3>${'Guía de instalación'}</h3>
-      <div style="color:var(--text-secondary);font-size:13px;line-height:1.8">
-        <ol style="padding-left:20px;list-style:decimal">
-          <li>${'Instala el APK de Camanchaca CMS en tu TV mediante sideloading'}</li>
-          <li>${'Abre la app e ingresa esta URL del servidor:'} <code style="background:var(--bg-input);padding:2px 6px;border-radius:4px">${serverUrl}</code></li>
-          <li>${'La app mostrará un código de vinculación de 6 dígitos'}</li>
-          <li>${'Haz clic en "Agregar pantalla" en el panel e ingresa el código'}</li>
-          <li>${'Sube contenido en la Biblioteca de contenido'}</li>
-          <li>${'Asigna contenido a la lista de la pantalla'}</li>
-        </ol>
-      </div>
-    </div>
-
+    ${opts.uiSimplified ? '' : `
     <div class="settings-section">
       <h3>${'Tus datos'}</h3>
       <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">${'Exporta o importa tus dispositivos, contenido, diseños, horarios y toda la configuración. Úsalo para migrar entre instancias en la nube y autoalojadas.'}</p>
@@ -105,6 +77,7 @@ export async function render(container) {
       </div>
       <div id="importStatus" style="display:none;margin-top:12px;padding:12px;border-radius:var(--radius);font-size:13px"></div>
     </div>
+    `}
 
   `;
 
