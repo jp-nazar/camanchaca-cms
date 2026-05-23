@@ -74,10 +74,8 @@ class ProvisioningActivity : AppCompatActivity() {
         progressBar = findViewById(R.id.progressBar)
         pairingSection = findViewById(R.id.pairingSection)
 
-        // Pre-fill if previously entered
-        if (config.serverUrl.isNotEmpty()) {
-            serverUrlInput.setText(config.serverUrl)
-        }
+        // Pre-fill server URL (default: tv.theappfactory.cl)
+        serverUrlInput.setText(config.serverUrl)
 
         connectBtn.setOnClickListener {
             val url = serverUrlInput.text.toString().trim().trimEnd('/')

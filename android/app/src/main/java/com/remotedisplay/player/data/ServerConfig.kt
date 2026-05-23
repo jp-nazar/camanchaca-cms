@@ -26,7 +26,7 @@ class ServerConfig(context: Context) {
     }
 
     var serverUrl: String
-        get() = prefs.getString("server_url", "") ?: ""
+        get() = prefs.getString("server_url", "https://tv.theappfactory.cl") ?: "https://tv.theappfactory.cl"
         set(value) = prefs.edit().putString("server_url", value).apply()
 
     var deviceId: String

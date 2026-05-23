@@ -12,7 +12,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Camanchaca CMS Setup"
+        android:text="Configuración de Camanchaca CMS"
         android:textColor="#3B82F6"
         android:textSize="32sp"
         android:textStyle="bold"
@@ -21,7 +21,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Enable these permissions for full remote control"
+        android:text="Active estos permisos para control remoto completo"
         android:textColor="#94A3B8"
         android:textSize="16sp"
         android:layout_marginBottom="40dp" />
@@ -49,7 +49,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Accessibility Service"
+                    android:text="Servicio de Accesibilidad"
                     android:textColor="#F1F5F9"
                     android:textSize="18sp"
                     android:textStyle="bold" />
@@ -57,7 +57,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Required for remote control (Home, Back, touch, gestures)"
+                    android:text="Requerido para control remoto (Inicio, Atrás, toque, gestos)"
                     android:textColor="#64748B"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -101,7 +101,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Install Unknown Apps"
+                    android:text="Instalar Apps Desconocidas"
                     android:textColor="#F1F5F9"
                     android:textSize="18sp"
                     android:textStyle="bold" />
@@ -109,7 +109,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Required for automatic OTA updates"
+                    android:text="Requerido para actualizaciones OTA automáticas"
                     android:textColor="#64748B"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -155,7 +155,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Notifications"
+                    android:text="Notificaciones"
                     android:textColor="#F1F5F9"
                     android:textSize="18sp"
                     android:textStyle="bold" />
@@ -163,7 +163,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Required for background service"
+                    android:text="Requerido para el servicio en segundo plano"
                     android:textColor="#64748B"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -196,7 +196,7 @@
         android:id="@+id/continueBtn"
         android:layout_width="500dp"
         android:layout_height="48dp"
-        android:text="Continue to Setup"
+        android:text="Continuar"
         android:textColor="#FFFFFF"
         android:textSize="16sp"
         android:textStyle="bold"
@@ -206,7 +206,7 @@
         android:id="@+id/skipText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Skip (remote control features will be limited)"
+        android:text="Omitir (las funciones de control remoto estarán limitadas)"
         android:textColor="#64748B"
         android:textSize="13sp"
         android:layout_marginTop="16dp"
