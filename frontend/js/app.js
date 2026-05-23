@@ -104,7 +104,7 @@ async function fetchUiConfig() {
     if (!res.ok) return;
     const config = await res.json();
     uiSimplified = config.simplified;
-    if (uiSimplified) applySimplifiedUi();
+    if (uiSimplified) { applySimplifiedUi(); route(); }
   } catch {}
 }
 
