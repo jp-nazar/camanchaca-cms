@@ -178,59 +178,6 @@ router.post('/remote', (req, res) => {
   }
 });
 
-// Add YouTube content
-router.post('/youtube', async (req, res) => {
-  try {
-    if (!req.workspaceId) return res.status(403).json({ error: 'No workspace context. Switch to a workspace before adding YouTube content.' });
-    const { url, name } = req.body;
-    if (!url) return res.status(400).json({ error: 'url is required' });
-
-    // Extract YouTube video ID from various URL formats
-    const videoId = extractYoutubeId(url);
-    if (!videoId) return res.status(400).json({ error: 'Invalid YouTube URL' });
-
-    // Fetch video title from YouTube oEmbed if no name provided
-    let filename = name;
-    if (!filename) {
-      try {
-        const oembedRes = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
-        if (oembedRes.ok) {
-          const oembed = await oembedRes.json();
-          filename = oembed.title;
-        }
-      } catch {}
-    }
-    if (!filename) filename = `YouTube: ${videoId}`;
-
-    const id = uuidv4();
-    const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&loop=1&playlist=${videoId}&enablejsapi=1`;
-    const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-
-    db.prepare(`
-      INSERT INTO content (id, user_id, workspace_id, filename, filepath, mime_type, file_size, remote_url, thumbnail_path)
-      VALUES (?, ?, ?, ?, '', 'video/youtube', 0, ?, ?)
-    `).run(id, req.user.id, req.workspaceId, safeFilename(filename), embedUrl, thumbnailUrl);
-
-    const content = db.prepare('SELECT * FROM content WHERE id = ?').get(id);
-    res.status(201).json(content);
-  } catch (err) {
-    console.error('YouTube add error:', err);
-    res.status(500).json({ error: 'Failed to add YouTube video' });
-  }
-});
-
-function extractYoutubeId(url) {
-  const patterns = [
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
-    /^([a-zA-Z0-9_-]{11})$/ // bare video ID
-  ];
-  for (const p of patterns) {
-    const m = url.match(p);
-    if (m) return m[1];
-  }
-  return null;
-}
-
 // Phase 2.2b: workspace-aware access. Mirrors the device check pattern.
 // Platform-template content (workspace_id IS NULL) is readable by anyone
 // and writable only by platform_admin.

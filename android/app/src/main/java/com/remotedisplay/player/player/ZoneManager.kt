@@ -131,16 +131,6 @@ class ZoneManager(
                     Log.i(TAG, "Zone ${zone.name}: widget $widgetType")
                 }
 
-                // YouTube - render in WebView
-                mimeType == "video/youtube" && !remoteUrl.isNullOrEmpty() -> {
-                    val webView = createWebView()
-                    webView.loadUrl(remoteUrl)
-                    webView.layoutParams = params
-                    container.addView(webView)
-                    zoneViews[zone.id] = webView
-                    Log.i(TAG, "Zone ${zone.name}: youtube $remoteUrl")
-                }
-
                 // Video
                 mimeType.startsWith("video/") -> {
                     val src = if (!remoteUrl.isNullOrEmpty()) remoteUrl

@@ -492,7 +492,7 @@ function renderPlaylist(assignments) {
       <div class="playlist-item-info">
         <div class="playlist-item-name">${esc(a.filename || 'Desconocido')}</div>
         <div class="playlist-item-meta">
-          ${a.mime_type === 'video/youtube' ? 'YouTube' : a.mime_type?.startsWith('video/') ? 'Video' : 'Imagen'}
+          ${a.mime_type?.startsWith('video/') ? 'Video' : 'Imagen'}
           ${a.zone_id ? ` &middot; <span style="color:var(--accent)">${'Zona: ' + a.zone_id.slice(0, 8)}</span>` : ''}
           ${a.content_duration ? ` &middot; ${Math.floor(a.content_duration / 60)}:${String(Math.floor(a.content_duration % 60)).padStart(2, '0')}` : ''}
           ${!a.content_duration && !a.mime_type?.startsWith('video/') && a.duration_sec ? ` &middot; ${a.duration_sec}s` : ''}

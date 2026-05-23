@@ -27,13 +27,6 @@
         android:visibility="gone"
         android:contentDescription="Display content" />
 
-    <!-- WebView for YouTube embeds -->
-    <WebView
-        android:id="@+id/youtubeWebView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:visibility="gone" />
-
     <!-- Status Overlay -->
     <LinearLayout
         android:id="@+id/statusOverlay"

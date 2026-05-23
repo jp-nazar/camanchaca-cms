@@ -98,11 +98,6 @@ export const api = {
     body: JSON.stringify({ url, name, mime_type })
   }),
 
-  addYoutubeContent: (url, name) => request('/content/youtube', {
-    method: 'POST',
-    body: JSON.stringify({ url, name })
-  }),
-
   // Assignments
   getAssignments: (deviceId) => request(`/assignments/device/${deviceId}`),
   addAssignment: (deviceId, data) => request(`/assignments/device/${deviceId}`, {

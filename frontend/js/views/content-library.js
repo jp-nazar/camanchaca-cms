@@ -55,19 +55,6 @@ export function render(container) {
         </select>
         <button class="btn btn-primary" id="addRemoteBtn">${'Agregar URL remota'}</button>
       </div>
-      <div style="width:320px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:12px">
-        <div style="display:flex;align-items:center;gap:8px;color:var(--text-primary);font-weight:500">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19.13C5.12 19.56 12 19.56 12 19.56s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.43z"/>
-            <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/>
-          </svg>
-          ${'YouTube'}
-        </div>
-        <p style="font-size:12px;color:var(--text-muted)">${'Inserta un video de YouTube en tus pantallas.'}</p>
-        <input type="text" id="youtubeUrlInput" class="input" placeholder="${'https://youtube.com/watch?v=...'}">
-        <input type="text" id="youtubeNameInput" class="input" placeholder="${'Nombre para mostrar (opcional)'}">
-        <button class="btn btn-primary" id="addYoutubeBtn">${'Agregar video de YouTube'}</button>
-      </div>
     </div>
     </div>
 
@@ -122,25 +109,6 @@ export function render(container) {
       showToast('Contenido remoto agregado', 'success');
       document.getElementById('remoteUrlInput').value = '';
       document.getElementById('remoteNameInput').value = '';
-      loadContent();
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
-  });
-
-  // YouTube URL handling
-  document.getElementById('addYoutubeBtn').addEventListener('click', async () => {
-    const url = document.getElementById('youtubeUrlInput').value.trim();
-    const name = document.getElementById('youtubeNameInput').value.trim();
-    if (!url) {
-      showToast('Ingresa una URL de YouTube', 'error');
-      return;
-    }
-    try {
-      await api.addYoutubeContent(url, name);
-      showToast('Video de YouTube agregado', 'success');
-      document.getElementById('youtubeUrlInput').value = '';
-      document.getElementById('youtubeNameInput').value = '';
       loadContent();
     } catch (err) {
       showToast(err.message, 'error');
@@ -349,17 +317,7 @@ async function loadContent() {
     grid.innerHTML = content.map(c => `
       <div class="content-item" draggable="true" data-content-id="${c.id}" data-folder="${c.folder || ''}">
         <div class="content-item-preview">
-          ${c.mime_type === 'video/youtube'
-            ? `<div style="position:relative;width:100%;height:100%;background:#000;display:flex;align-items:center;justify-content:center">
-                <img src="${c.thumbnail_path}" alt="${esc(c.filename)}" loading="lazy" style="width:100%;height:100%;object-fit:cover">
-                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="red" stroke="none">
-                    <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19.13C5.12 19.56 12 19.56 12 19.56s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.43z"/>
-                    <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="white"/>
-                  </svg>
-                </div>
-              </div>`
-          : c.remote_url
+          ${c.remote_url
             ? `<div class="video-icon" style="flex-direction:column;gap:4px">
                 <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
@@ -381,7 +339,7 @@ async function loadContent() {
         <div class="content-item-body">
           <div class="content-item-name" title="${esc(c.filename)}">${esc(c.filename)}</div>
           <div class="content-item-size">
-            ${c.mime_type === 'video/youtube' ? 'YouTube' : c.remote_url ? 'URL remota' : (c.mime_type?.startsWith('video/') ? 'Video' : 'Imagen')}
+            ${c.remote_url ? 'URL remota' : (c.mime_type?.startsWith('video/') ? 'Video' : 'Imagen')}
             ${c.duration_sec ? ` &middot; ${Math.floor(c.duration_sec / 60)}:${String(Math.floor(c.duration_sec % 60)).padStart(2, '0')}` : ''}
             ${c.file_size ? ' &middot; ' + formatFileSize(c.file_size) : ''}
             ${c.width && c.height ? ` &middot; ${c.width}x${c.height}` : ''}
@@ -591,8 +549,7 @@ function showEditModal(contentItem, onSave) {
 }
 
 function showPreview(content) {
-  const isYoutube = content.mime_type === 'video/youtube';
-  const isVideo = !isYoutube && content.mime_type?.startsWith('video/');
+  const isVideo = content.mime_type?.startsWith('video/');
   const src = content.remote_url || `/uploads/content/${content.filepath}`;
 
   const overlay = document.createElement('div');
@@ -602,11 +559,9 @@ function showPreview(content) {
     <div style="background:var(--bg-secondary);border-radius:var(--radius-lg);max-width:90vw;max-height:90vh;overflow:hidden;position:relative">
       <button style="position:absolute;top:8px;right:8px;z-index:1;background:rgba(0,0,0,0.7);border:none;color:white;width:32px;height:32px;border-radius:50%;font-size:18px;cursor:pointer" id="closePreview">&times;</button>
       <div style="max-width:80vw;max-height:80vh">
-        ${isYoutube
-          ? `<iframe src="${(() => { try { const u = new URL(src); if (!u.searchParams.has('mute')) u.searchParams.set('mute','1'); if (!u.searchParams.has('enablejsapi')) u.searchParams.set('enablejsapi','1'); if (!u.searchParams.has('origin')) u.searchParams.set('origin', window.location.origin); return u.toString(); } catch { return src; } })()}" style="width:80vw;height:45vw;max-height:80vh;display:block;border:none" allow="autoplay;encrypted-media" allowfullscreen></iframe>`
-          : isVideo
-            ? `<video src="${esc(src)}" controls autoplay style="max-width:80vw;max-height:80vh;display:block"></video>`
-            : `<img src="${esc(src)}" style="max-width:80vw;max-height:80vh;display:block">`
+        ${isVideo
+          ? `<video src="${esc(src)}" controls autoplay style="max-width:80vw;max-height:80vh;display:block"></video>`
+          : `<img src="${esc(src)}" style="max-width:80vw;max-height:80vh;display:block">`
         }
       </div>
       <div style="padding:12px 16px;border-top:1px solid var(--border)">

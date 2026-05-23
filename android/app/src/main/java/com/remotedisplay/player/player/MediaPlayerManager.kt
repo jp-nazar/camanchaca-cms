@@ -3,9 +3,6 @@ package com.remotedisplay.player.player
 import android.content.Context
 import android.net.Uri
 import android.util.Log
-import android.webkit.WebChromeClient
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.widget.ImageView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -18,14 +15,13 @@ class MediaPlayerManager(
     private val context: Context,
     private val playerView: PlayerView,
     private val imageView: ImageView,
-    private val youtubeWebView: WebView? = null,
     private val onVideoComplete: () -> Unit,
     private val onImageError: (() -> Unit)? = null
 ) {
     private var exoPlayer: ExoPlayer? = null
     private var currentType: MediaType = MediaType.NONE
 
-    enum class MediaType { NONE, VIDEO, IMAGE, YOUTUBE }
+    enum class MediaType { NONE, VIDEO, IMAGE }
 
     init {
         setupExoPlayer()
@@ -44,34 +40,12 @@ class MediaPlayerManager(
         }
     }
 
-    fun playYoutube(embedUrl: String, durationSec: Int = 0) {
-        Log.i("MediaPlayerManager", "Playing YouTube: $embedUrl")
-        currentType = MediaType.YOUTUBE
-
-        playerView.visibility = android.view.View.GONE
-        imageView.visibility = android.view.View.GONE
-        youtubeWebView?.visibility = android.view.View.VISIBLE
-
-        exoPlayer?.stop()
-
-        youtubeWebView?.apply {
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            settings.mediaPlaybackRequiresUserGesture = false
-            webViewClient = WebViewClient()
-            webChromeClient = WebChromeClient()
-            setBackgroundColor(android.graphics.Color.BLACK)
-            loadUrl(embedUrl)
-        }
-    }
-
     fun playVideoFromUrl(url: String, muted: Boolean = false) {
         Log.i("MediaPlayerManager", "Streaming video from URL: $url (muted=$muted)")
         currentType = MediaType.VIDEO
 
         playerView.visibility = android.view.View.VISIBLE
         imageView.visibility = android.view.View.GONE
-        youtubeWebView?.visibility = android.view.View.GONE
 
         exoPlayer?.apply {
             volume = if (muted) 0f else 1f
@@ -87,7 +61,6 @@ class MediaPlayerManager(
 
         playerView.visibility = android.view.View.GONE
         imageView.visibility = android.view.View.VISIBLE
-        youtubeWebView?.visibility = android.view.View.GONE
 
         exoPlayer?.stop()
 
@@ -112,7 +85,6 @@ class MediaPlayerManager(
         // Show player, hide image
         playerView.visibility = android.view.View.VISIBLE
         imageView.visibility = android.view.View.GONE
-        youtubeWebView?.visibility = android.view.View.GONE
 
         exoPlayer?.apply {
             volume = if (muted) 0f else 1f
@@ -128,7 +100,6 @@ class MediaPlayerManager(
 
         playerView.visibility = android.view.View.GONE
         imageView.visibility = android.view.View.VISIBLE
-        youtubeWebView?.visibility = android.view.View.GONE
 
         exoPlayer?.stop()
 
@@ -149,8 +120,6 @@ class MediaPlayerManager(
     fun stop() {
         exoPlayer?.stop()
         imageView.setImageBitmap(null)
-        youtubeWebView?.loadUrl("about:blank")
-        youtubeWebView?.visibility = android.view.View.GONE
         currentType = MediaType.NONE
     }
 

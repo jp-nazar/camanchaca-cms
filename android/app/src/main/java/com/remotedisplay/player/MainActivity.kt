@@ -138,12 +138,10 @@ class MainActivity : AppCompatActivity() {
         )
 
         // Setup media player
-        val youtubeWebView = findViewById<android.webkit.WebView>(R.id.youtubeWebView)
         mediaPlayer = MediaPlayerManager(
             context = this,
             playerView = playerView,
             imageView = imageView,
-            youtubeWebView = youtubeWebView,
             onVideoComplete = { playlistController.onVideoComplete() },
             onImageError = {
                 Log.w("MainActivity", "Image failed to load, skipping to next item")
@@ -416,14 +414,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun playItem(item: PlaylistItem) {
         hideStatus()
-
-        // YouTube content - play in WebView
-        if (item.mimeType == "video/youtube" && !item.remoteUrl.isNullOrEmpty()) {
-            Log.i("MainActivity", "Playing YouTube: ${item.remoteUrl}")
-            mediaPlayer.playYoutube(item.remoteUrl!!, item.durationSec)
-            wsService?.sendPlaybackState(item.contentId, 0f)
-            return
-        }
 
         // Remote URL content - stream directly, no download
         if (item.isRemote) {

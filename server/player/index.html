@@ -157,15 +157,6 @@
     // leader is allowed to make sound. This helper is the single source of
     // truth used by every code path that would otherwise unmute audio.
     function isWallFollower() { return !!(wallConfig && !wallConfig.is_leader); }
-    // YouTube player state. Declared up front because the cached-playlist restore
-    // (a few lines below) may synchronously call into createYoutubeEmbed before the
-    // script reaches the original declaration site, which used to throw a temporal
-    // dead zone error.
-    let ytApiReady = false;
-    let ytApiCallbacks = [];
-    let activeYtPlayer = null;
-    let ytGeneration = 0;
-
     // AudioContext is created lazily on the first user gesture. Resuming it
     // is what convinces stricter browsers (Firefox) that the site is "user-
     // activated" for audio. Reused across all later unmute attempts.
@@ -249,10 +240,6 @@
         if (isWallFollower()) return;
         if (wasFirst) console.log('[wall/audio] first user gesture detected — attempting unmute');
         tryUnmuteLeader();
-        // Unmute YouTube player if active
-        if (activeYtPlayer && typeof activeYtPlayer.unMute === 'function') {
-          try { activeYtPlayer.unMute(); activeYtPlayer.setVolume(100); console.log('Unmuted YouTube player'); } catch {}
-        }
       }, { once: false });
     });
 
@@ -407,13 +394,6 @@
       if (isWallFollower()) return;
       // Unmute any playing HTML5 video
       document.querySelectorAll('video').forEach(v => { v.muted = false; });
-      // Unmute the active YouTube embed (iframe — querySelectorAll('video') misses it)
-      try {
-        if (activeYtPlayer && typeof activeYtPlayer.unMute === 'function') {
-          activeYtPlayer.unMute();
-          activeYtPlayer.setVolume(100);
-        }
-      } catch (e) { console.warn('YT unmute failed:', e); }
     }
 
     document.getElementById('connectBtn').onclick = connectBtnFunc;
@@ -973,137 +953,6 @@
     }
 
     // ==================== Content Rendering ====================
-    // Extract YouTube video ID from embed URL
-    function extractVideoId(url) {
-      try {
-        const m = url.match(/\/embed\/([a-zA-Z0-9_-]{11})/);
-        if (m) return m[1];
-        const u = new URL(url);
-        return u.searchParams.get('v') || url.match(/([a-zA-Z0-9_-]{11})/)?.[1] || null;
-      } catch { return null; }
-    }
-
-    // Load YouTube IFrame API once. (ytApiReady / ytApiCallbacks are declared at the
-    // top of the script alongside the other player state.)
-    function loadYoutubeApi(cb) {
-      if (ytApiReady) { cb(); return; }
-      ytApiCallbacks.push(cb);
-      if (!document.getElementById('yt-api-script')) {
-        const tag = document.createElement('script');
-        tag.id = 'yt-api-script';
-        tag.src = 'https://www.youtube.com/iframe_api';
-        document.head.appendChild(tag);
-        window.onYouTubeIframeAPIReady = () => {
-          ytApiReady = true;
-          ytApiCallbacks.forEach(fn => fn());
-          ytApiCallbacks = [];
-        };
-      }
-    }
-
-    function createYoutubeEmbed(src, item, container) {
-      const videoId = extractVideoId(src);
-      if (!videoId) {
-        console.error('Could not extract YouTube video ID from:', src);
-        if (playlist.length > 1) setTimeout(nextItem, 2000);
-        return null;
-      }
-
-      // Invalidate any previous player's callbacks
-      const myGeneration = ++ytGeneration;
-
-      // Destroy old player without triggering side effects (callbacks check generation)
-      if (activeYtPlayer) { try { activeYtPlayer.destroy(); } catch {} activeYtPlayer = null; }
-
-      // Create a div for the YT player to replace
-      const playerDiv = document.createElement('div');
-      playerDiv.id = 'yt-player-' + Date.now();
-      playerDiv.style.cssText = 'width:100%;height:100%;background:#000';
-      container.appendChild(playerDiv);
-
-      // Add a click-to-unmute overlay on top of the YouTube iframe
-      if (!userHasInteracted) {
-        const overlay = document.createElement('div');
-        overlay.style.cssText = 'position:absolute;inset:0;z-index:10;cursor:pointer;display:flex;align-items:end;justify-content:center;padding-bottom:40px;';
-        overlay.innerHTML = '<div style="background:rgba(0,0,0,0.7);color:#fff;padding:10px 24px;border-radius:8px;font:14px sans-serif;pointer-events:none">Click to unmute</div>';
-        overlay.onclick = (e) => {
-          e.stopPropagation();
-          userHasInteracted = true;
-          unlockAudio();
-          if (activeYtPlayer && typeof activeYtPlayer.unMute === 'function') {
-            activeYtPlayer.unMute();
-            activeYtPlayer.setVolume(100);
-            console.log('Unmuted YouTube player via overlay');
-          }
-          overlay.remove();
-        };
-        // Don't override container.style.position here — #playerContainer is already
-        // position:fixed so absolute children anchor to it. Setting position:relative
-        // collapsed the container to 0 height (no content sizing it in normal flow),
-        // which made the YT iframe render black.
-        container.appendChild(overlay);
-      }
-
-      loadYoutubeApi(() => {
-        // Bail if a newer player was created while we waited for the API
-        if (myGeneration !== ytGeneration) return;
-
-        const shouldLoop = playlist.length <= 1;
-        let playStartTime = 0;
-        activeYtPlayer = new YT.Player(playerDiv.id, {
-          videoId: videoId,
-          width: '100%',
-          height: '100%',
-          playerVars: {
-            autoplay: 1,
-            mute: userHasInteracted ? 0 : 1,
-            controls: 0,
-            rel: 0,
-            modestbranding: 1,
-            loop: shouldLoop ? 1 : 0,
-            playlist: shouldLoop ? videoId : undefined,
-            enablejsapi: 1,
-            origin: window.location.origin,
-          },
-          events: {
-            onReady: (event) => {
-              if (myGeneration !== ytGeneration) return;
-              console.log('YouTube player ready:', item.filename);
-              event.target.playVideo();
-              if (userHasInteracted) {
-                event.target.unMute();
-                event.target.setVolume(100);
-              }
-            },
-            onError: (event) => {
-              if (myGeneration !== ytGeneration) return;
-              console.error('YouTube error', event.data, 'for:', item.filename);
-              if (playlist.length > 1) {
-                console.log('Skipping unplayable YouTube video');
-                setTimeout(nextItem, 2000);
-              }
-            },
-            onStateChange: (event) => {
-              if (myGeneration !== ytGeneration) return;
-              // Track when video actually starts playing
-              if (event.data === 1) playStartTime = Date.now();
-              // YT.PlayerState.ENDED = 0 — advance to next video
-              // Ignore ENDED if video played for less than 3 seconds (spurious during init)
-              if (event.data === 0 && !shouldLoop && (Date.now() - playStartTime) > 3000) {
-                console.log('YouTube video ended:', item.filename);
-                nextItem();
-              }
-            },
-          },
-        });
-      });
-
-      // Note: YouTube advancement is handled by onStateChange ENDED event.
-      // Do NOT use duration_sec timeout here — it defaults to 10s for assignments
-      // and would cut videos short. The YouTube player tells us when it's done.
-
-      return playerDiv;
-    }
 
     // Stop and release all media in the player. pause() alone leaves the decoder
     // buffering on some browsers; removeAttribute('src') + load() is what actually
@@ -1136,8 +985,7 @@
       // Defense in depth: bail to waiting state on missing/malformed item rather
       // than fall through every branch and leave a blank container.
       const hasRenderableType = item && (
-        item.mime_type === 'video/youtube' ||
-        (typeof item.mime_type === 'string' && (item.mime_type.startsWith('video/') || item.mime_type.startsWith('image/')))
+        typeof item.mime_type === 'string' && (item.mime_type.startsWith('video/') || item.mime_type.startsWith('image/'))
       );
       if (!hasRenderableType) {
         showStatus('Waiting for content...');
@@ -1162,8 +1010,7 @@
       // dictates index transitions. Single-screen and leader behave normally.
       const isFollower = !!wallConfig && !wallConfig.is_leader;
 
-      const isYoutube = item.mime_type === 'video/youtube';
-      const isVideo = !isYoutube && item.mime_type?.startsWith('video/');
+      const isVideo = item.mime_type?.startsWith('video/');
       const isImage = item.mime_type?.startsWith('image/');
       const remoteUrl = item.remote_url;
       const serverUrl = config.serverUrl;
@@ -1174,9 +1021,7 @@
         renderZones(container, item);
       } else {
         // Fullscreen / wall-tile
-        if (isYoutube) {
-          createYoutubeEmbed(src, item, mount);
-        } else if (isVideo) {
+        if (isVideo) {
           const video = document.createElement('video');
           video.src = src;
           video.autoplay = true;
@@ -1261,11 +1106,7 @@
         const cacheBuster = assignment.content_version ? `?v=${assignment.content_version}` : '';
         const src = assignment.remote_url || `${config.serverUrl}/uploads/content/${assignment.filepath}${cacheBuster}`;
 
-        const isYoutubeZone = assignment.mime_type === 'video/youtube';
-
-        if (isYoutubeZone) {
-          createYoutubeEmbed(src, assignment, div);
-        } else if (isVideo) {
+        if (isVideo) {
           const video = document.createElement('video');
           video.src = src;
           video.autoplay = true;
