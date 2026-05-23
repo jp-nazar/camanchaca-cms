@@ -93,7 +93,7 @@ router.post('/', upload.single('file'), async (req, res) => {
 
     const id = uuidv4();
     const filepath = req.file.filename;
-    let width = null, height = null, durationSec = null, thumbnailPath = null;
+    let width = null, height = null, durationSec = null, thumbnailPath = null, optimizedPath = null;
 
     // Try to generate thumbnail, get dimensions, and detect duration
     try {
@@ -109,6 +109,21 @@ router.post('/', upload.single('file'), async (req, res) => {
           .resize(config.thumbnailWidth)
           .jpeg({ quality: 70 })
           .toFile(path.join(config.contentDir, thumbnailPath));
+
+        // Generate device-optimized version (JPEG, max 1920x1080, quality 85)
+        try {
+          optimizedPath = `opt_${filepath.replace(/\.[^.]+$/, '.jpg')}`;
+          await sharp(req.file.path)
+            .resize(config.deviceImageMaxWidth, config.deviceImageMaxHeight, {
+              fit: 'inside',
+              withoutEnlargement: true
+            })
+            .jpeg({ quality: config.deviceImageQuality, progressive: true })
+            .toFile(path.join(config.contentDir, optimizedPath));
+        } catch (e) {
+          console.warn('Optimized image generation failed:', e.message);
+          optimizedPath = null;
+        }
       } else if (req.file.mimetype.startsWith('video/')) {
         // Extract video duration and dimensions with ffprobe
         try {
@@ -140,9 +155,9 @@ router.post('/', upload.single('file'), async (req, res) => {
     }
 
     db.prepare(`
-      INSERT INTO content (id, user_id, workspace_id, filename, filepath, mime_type, file_size, duration_sec, thumbnail_path, width, height)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, req.user.id, req.workspaceId, safeFilename(req.file.originalname), filepath, req.file.mimetype, req.file.size, durationSec, thumbnailPath, width, height);
+      INSERT INTO content (id, user_id, workspace_id, filename, filepath, mime_type, file_size, duration_sec, thumbnail_path, width, height, optimized_filepath)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, req.user.id, req.workspaceId, safeFilename(req.file.originalname), filepath, req.file.mimetype, req.file.size, durationSec, thumbnailPath, width, height, optimizedPath);
 
     const content = db.prepare('SELECT * FROM content WHERE id = ?').get(id);
     res.status(201).json(content);
@@ -279,11 +294,16 @@ router.put('/:id/replace', upload.single('file'), async (req, res) => {
     const oldThumb = path.join(config.contentDir, content.thumbnail_path);
     if (fs.existsSync(oldThumb)) fs.unlinkSync(oldThumb);
   }
+  // Delete old optimized file
+  if (content.optimized_filepath) {
+    const oldOpt = path.join(config.contentDir, content.optimized_filepath);
+    if (fs.existsSync(oldOpt)) fs.unlinkSync(oldOpt);
+  }
 
   const filepath = req.file.filename;
-  let width = null, height = null, thumbnailPath = null;
+  let width = null, height = null, thumbnailPath = null, optimizedPath = null;
 
-  // Generate new thumbnail for images
+  // Generate new thumbnail and optimized version for images
   try {
     if (req.file.mimetype.startsWith('image/')) {
       const sharp = require('sharp');
@@ -293,13 +313,28 @@ router.put('/:id/replace', upload.single('file'), async (req, res) => {
       thumbnailPath = `thumb_${filepath}`;
       await sharp(req.file.path).resize(config.thumbnailWidth).jpeg({ quality: 70 })
         .toFile(path.join(config.contentDir, thumbnailPath));
+
+      // Generate device-optimized version
+      try {
+        optimizedPath = `opt_${filepath.replace(/\.[^.]+$/, '.jpg')}`;
+        await sharp(req.file.path)
+          .resize(config.deviceImageMaxWidth, config.deviceImageMaxHeight, {
+            fit: 'inside',
+            withoutEnlargement: true
+          })
+          .jpeg({ quality: config.deviceImageQuality, progressive: true })
+          .toFile(path.join(config.contentDir, optimizedPath));
+      } catch (e) {
+        console.warn('Optimized image generation failed:', e.message);
+        optimizedPath = null;
+      }
     }
   } catch (e) {
     console.warn('Thumbnail generation failed:', e.message);
   }
 
-  db.prepare(`UPDATE content SET filepath = ?, mime_type = ?, file_size = ?, thumbnail_path = ?, width = ?, height = ? WHERE id = ?`)
-    .run(filepath, req.file.mimetype, req.file.size, thumbnailPath, width, height, req.params.id);
+  db.prepare(`UPDATE content SET filepath = ?, mime_type = ?, file_size = ?, thumbnail_path = ?, width = ?, height = ?, optimized_filepath = ? WHERE id = ?`)
+    .run(filepath, req.file.mimetype, req.file.size, thumbnailPath, width, height, optimizedPath, req.params.id);
 
   res.json(db.prepare('SELECT * FROM content WHERE id = ?').get(req.params.id));
 });
@@ -340,6 +375,12 @@ router.delete('/:id', (req, res) => {
   if (content.thumbnail_path) {
     const thumbPath = path.join(config.contentDir, content.thumbnail_path);
     if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
+  }
+
+  // Delete optimized file
+  if (content.optimized_filepath) {
+    const optPath = path.join(config.contentDir, content.optimized_filepath);
+    if (fs.existsSync(optPath)) fs.unlinkSync(optPath);
   }
 
   // Get devices that have this content in their playlist (via playlist_items)

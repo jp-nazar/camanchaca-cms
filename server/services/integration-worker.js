@@ -155,21 +155,45 @@ async function saveAsContent(int, buf, mimeType, ext) {
 
   fs.writeFileSync(destPath, buf);
 
+  // Generate device-optimized variant for image integrations
+  let optimizedPath = null;
+  if (mimeType.startsWith('image/')) {
+    try {
+      const sharp = require('sharp');
+      optimizedPath = `opt_${contentId}.jpg`;
+      await sharp(destPath)
+        .resize(config.deviceImageMaxWidth, config.deviceImageMaxHeight, {
+          fit: 'inside',
+          withoutEnlargement: true
+        })
+        .jpeg({ quality: config.deviceImageQuality, progressive: true })
+        .toFile(path.join(config.contentDir, optimizedPath));
+    } catch (e) {
+      console.warn('[integration-worker] Optimized image generation failed:', e.message);
+      optimizedPath = null;
+    }
+  }
+
   if (isNew) {
     db.prepare(`
-      INSERT INTO content (id, user_id, workspace_id, filename, filepath, mime_type, file_size)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(contentId, null, int.workspace_id, filename, filepath, mimeType, buf.length);
+      INSERT INTO content (id, user_id, workspace_id, filename, filepath, mime_type, file_size, optimized_filepath)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(contentId, null, int.workspace_id, filename, filepath, mimeType, buf.length, optimizedPath);
     db.prepare('UPDATE integrations SET content_id = ?, status = \'success\', last_error = NULL, last_fetched_at = strftime(\'%s\',\'now\'), updated_at = strftime(\'%s\',\'now\') WHERE id = ?')
       .run(contentId, int.id);
   } else {
-    // Remove stale file if it had a different name (pre-migration cleanup)
-    const old = db.prepare('SELECT filepath FROM content WHERE id = ?').get(contentId);
-    if (old && old.filepath && old.filepath !== filepath) {
-      try { fs.unlinkSync(path.join(config.contentDir, old.filepath)); } catch {}
+    // Remove stale files if names changed (pre-migration cleanup)
+    const old = db.prepare('SELECT filepath, optimized_filepath FROM content WHERE id = ?').get(contentId);
+    if (old) {
+      if (old.filepath && old.filepath !== filepath) {
+        try { fs.unlinkSync(path.join(config.contentDir, old.filepath)); } catch {}
+      }
+      if (old.optimized_filepath && old.optimized_filepath !== optimizedPath) {
+        try { fs.unlinkSync(path.join(config.contentDir, old.optimized_filepath)); } catch {}
+      }
     }
-    db.prepare('UPDATE content SET filename = ?, filepath = ?, file_size = ? WHERE id = ?')
-      .run(filename, filepath, buf.length, contentId);
+    db.prepare('UPDATE content SET filename = ?, filepath = ?, file_size = ?, optimized_filepath = ? WHERE id = ?')
+      .run(filename, filepath, buf.length, optimizedPath, contentId);
     db.prepare('UPDATE integrations SET status = \'success\', last_error = NULL, last_fetched_at = strftime(\'%s\',\'now\'), updated_at = strftime(\'%s\',\'now\') WHERE id = ?')
       .run(int.id);
     pushToAffectedDevices(contentId);

@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS content (
     thumbnail_path  TEXT,
     width           INTEGER,
     height          INTEGER,
+    optimized_filepath TEXT,
     remote_url      TEXT,
     created_at      INTEGER NOT NULL DEFAULT (strftime('%s','now'))
 );

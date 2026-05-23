@@ -260,7 +260,9 @@ app.get('/api/content/:id/file', (req, res) => {
   if (!content.filepath) return res.status(404).json({ error: 'No file (remote URL content)' });
   const inPlaylist = db.prepare('SELECT id FROM playlist_items WHERE content_id = ? LIMIT 1').get(req.params.id);
   if (!inPlaylist) return res.status(403).json({ error: 'Content not assigned to any playlist' });
-  const safePath = path.resolve(config.contentDir, path.basename(content.filepath));
+  // Serve device-optimized variant if available; fallback to original for legacy rows.
+  const fileToServe = content.optimized_filepath || content.filepath;
+  const safePath = path.resolve(config.contentDir, path.basename(fileToServe));
   if (!safePath.startsWith(path.resolve(config.contentDir))) return res.status(403).json({ error: 'Invalid path' });
   res.sendFile(safePath);
 });

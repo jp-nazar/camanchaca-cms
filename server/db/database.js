@@ -100,6 +100,8 @@ const migrations = [
   "DROP TABLE IF EXISTS kiosk_pages",
   // Integrations feature
   "CREATE TABLE IF NOT EXISTS integrations (id TEXT PRIMARY KEY, workspace_id TEXT REFERENCES workspaces(id), name TEXT NOT NULL, integration_type TEXT NOT NULL, config TEXT NOT NULL DEFAULT '{}', content_id TEXT REFERENCES content(id) ON DELETE SET NULL, status TEXT NOT NULL DEFAULT 'idle', last_error TEXT, last_fetched_at INTEGER, next_fetch_at INTEGER, enabled INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')), updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')))",
+  // Device-optimized image variants
+  'ALTER TABLE content ADD COLUMN optimized_filepath TEXT',
 ];
 for (const sql of migrations) {
   try { db.exec(sql); } catch (e) { /* already exists */ }

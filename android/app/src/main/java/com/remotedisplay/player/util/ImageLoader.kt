@@ -89,6 +89,11 @@ object ImageLoader {
         if (maxW <= 0 || maxH <= 0) return 1
         var sample = 1
         while (srcW / sample > maxW || srcH / sample > maxH) sample *= 2
+        // Power-of-2 sampling is coarse. A 2000x1125 image on a 1920x1080 screen
+        // would decode to 1000x562 (sample=2) and then get upscaled by ImageView,
+        // causing visible pixelation. Back off to the previous power-of-2 if the
+        // decoded bitmap would be smaller than the target in both dimensions.
+        while (sample > 1 && srcW / sample < maxW && srcH / sample < maxH) sample /= 2
         return sample
     }
 }
