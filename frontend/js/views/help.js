@@ -28,25 +28,6 @@ export function render(container) {
     </div>
 
     <div class="settings-section">
-      <h3>${'Preguntas frecuentes'}</h3>
-      ${[
-        { q: 'What devices are supported?', a: 'Android TV/tablets (APK), Raspberry Pi, Windows, ChromeOS, LG webOS, Samsung Tizen, Fire TV, and any device with a web browser.' },
-        { q: 'How does the free trial work?', a: 'New accounts get a 14-day free trial of the Pro plan (15 devices, all features). After 14 days, you\'re moved to the Free plan (1 device) unless you upgrade.' },
-        { q: 'Can I use portrait mode displays?', a: 'Yes! Set the orientation to "Portrait" in the device\'s Info tab. The content will be rotated accordingly.' },
-        { q: 'What happens when a device goes offline?', a: 'Devices cache content locally, so they continue playing their playlist even without internet. You\'ll receive an email alert after 5 minutes of being offline.' },
-        { q: 'How do I update the Android app?', a: 'The app checks for updates automatically every 30 minutes. You can also force an update from the device\'s Info tab in the dashboard.' },
-        { q: 'What video formats are supported?', a: 'MP4 (H.264), WebM, AVI, MKV, MOV. For best compatibility, use MP4 with H.264 encoding.' },
-        { q: 'How do I export proof-of-play reports?', a: 'Go to Reports, set your date range and filters, then click "Export CSV".' },
-        { q: 'What is a video wall?', a: 'A video wall combines multiple displays into one large screen. For example, four TVs in a 2x2 grid showing one big image/video.' },
-      ].map(faq => `
-        <div style="border-bottom:1px solid var(--border);padding:12px 0">
-          <div style="font-weight:600;font-size:14px;margin-bottom:4px">${faq.q}</div>
-          <div style="color:var(--text-secondary);font-size:13px">${faq.a}</div>
-        </div>
-      `).join('')}
-    </div>
-
-    <div class="settings-section">
       <h3>${'Atajos de teclado'}</h3>
       <div style="display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:13px">
         <kbd style="background:var(--bg-input);padding:2px 8px;border-radius:4px;font-family:monospace">Esc</kbd> <span style="color:var(--text-secondary)">${'Reiniciar reproductor web (en la página del reproductor)'}</span>
