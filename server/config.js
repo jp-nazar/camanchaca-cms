@@ -57,5 +57,4 @@ module.exports = {
   // First-user setup is allowed so a fresh install can be initialized.
   disableRegistration: ['true', '1'].includes(String(process.env.DISABLE_REGISTRATION || '').toLowerCase()),
   uiSimplified: ['true', '1'].includes(String(process.env.UI_SIMPLIFIED || '').toLowerCase()),
-  hideHelp: ['true', '1'].includes(String(process.env.HIDE_HELP || '').toLowerCase()),
 };

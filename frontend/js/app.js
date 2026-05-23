@@ -21,7 +21,6 @@ import { isPlatformAdmin } from './utils.js';
 import { renderWorkspaceSwitcher } from './components/workspace-switcher.js';
 
 let uiSimplified = false;
-let hideHelp = false;
 
 const app = document.getElementById('app');
 const sidebar = document.querySelector('.sidebar');
@@ -105,27 +104,15 @@ async function fetchUiConfig() {
     if (!res.ok) return;
     const config = await res.json();
     uiSimplified = config.simplified;
-    hideHelp = config.hideHelp;
-    let needsRoute = false;
-    if (uiSimplified) { applySimplifiedUi(); needsRoute = true; }
-    if (hideHelp) { applyHideHelp(); needsRoute = true; }
-    if (needsRoute) route();
+    if (uiSimplified) { applySimplifiedUi(); route(); }
   } catch {}
 }
 
 function applySimplifiedUi() {
-  const ids = ['wallsNavItem', 'activityNavItem'];
+  const ids = ['wallsNavItem', 'activityNavItem', 'helpNavItem'];
   ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
   const hash = window.location.hash;
-  if (['#/walls', '#/activity'].includes(hash) || hash.startsWith('#/wall/')) {
-    window.location.hash = '#/';
-  }
-}
-
-function applyHideHelp() {
-  const el = document.getElementById('helpNavItem');
-  if (el) el.style.display = 'none';
-  if (window.location.hash === '#/help' || window.location.hash.startsWith('#/help')) {
+  if (['#/walls', '#/activity', '#/help'].includes(hash) || hash.startsWith('#/wall/')) {
     window.location.hash = '#/';
   }
 }
@@ -178,11 +165,7 @@ function route() {
   updateSidebarUser();
 
   // Redirect if in simplified mode and trying to access a hidden view
-  if (uiSimplified && (hash === '#/walls' || hash === '#/activity' || hash.startsWith('#/wall/'))) {
-    window.location.hash = '#/';
-    return;
-  }
-  if (hideHelp && (hash === '#/help' || hash.startsWith('#/help'))) {
+  if (uiSimplified && (hash === '#/walls' || hash === '#/activity' || hash === '#/help' || hash.startsWith('#/wall/'))) {
     window.location.hash = '#/';
     return;
   }

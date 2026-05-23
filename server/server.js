@@ -341,7 +341,7 @@ app.get('/api/version', (req, res) => {
 
 // UI configuration flags (used to simplify/hide features in the frontend)
 app.get('/api/config/ui', requireAuth, (req, res) => {
-  res.json({ simplified: config.uiSimplified, hideHelp: config.hideHelp });
+  res.json({ simplified: config.uiSimplified });
 });
 
 // Public status page
