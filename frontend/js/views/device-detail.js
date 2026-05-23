@@ -122,6 +122,7 @@ async function loadDevice(deviceId, activeTab = null) {
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-secondary btn-sm" id="renameBtn">${'Renombrar'}</button>
+          ${!simplified ? `
           <button class="btn btn-secondary btn-sm" id="screenshotBtn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
@@ -129,6 +130,7 @@ async function loadDevice(deviceId, activeTab = null) {
             </svg>
             ${'Captura'}
           </button>
+          ` : ''}
           <button class="btn btn-danger btn-sm" id="deleteDeviceBtn">${'Eliminar'}</button>
         </div>
       </div>
@@ -144,6 +146,7 @@ async function loadDevice(deviceId, activeTab = null) {
 
       <!-- Now Playing Tab -->
       <div class="tab-content active" id="tab-nowplaying">
+        ${!simplified ? `
         <div class="screenshot-container">
           ${device.screenshot
             ? `<img id="currentScreenshot" src="/api/devices/${device.id}/screenshot?t=${Date.now()}&token=${localStorage.getItem('token')}" alt="Current screen">`
@@ -157,6 +160,7 @@ async function loadDevice(deviceId, activeTab = null) {
               </div>`
           }
         </div>
+        ` : ''}
         <p id="nowPlayingInfo" style="color:var(--text-secondary);font-size:13px;">
           ${device.assignments?.length ? (device.assignments.length === 1 ? '1 elemento en la lista' : (device.assignments.length) + ' elementos en la lista') : 'Sin contenido asignado'}
         </p>
