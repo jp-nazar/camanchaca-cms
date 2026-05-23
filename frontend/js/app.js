@@ -109,10 +109,10 @@ async function fetchUiConfig() {
 }
 
 function applySimplifiedUi() {
-  const ids = ['wallsNavItem', 'integrationsNavItem', 'activityNavItem', 'helpNavItem'];
+  const ids = ['wallsNavItem', 'activityNavItem', 'helpNavItem'];
   ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
   const hash = window.location.hash;
-  if (['#/walls', '#/integrations', '#/activity', '#/help'].includes(hash) || hash.startsWith('#/wall/')) {
+  if (['#/walls', '#/activity', '#/help'].includes(hash) || hash.startsWith('#/wall/')) {
     window.location.hash = '#/';
   }
 }
@@ -166,7 +166,7 @@ function route() {
 
   // Redirect if in simplified mode and trying to access a hidden view
   if (uiSimplified) {
-    if (hash === '#/walls' || hash === '#/integrations' || hash === '#/activity' || hash === '#/help' || hash.startsWith('#/wall/')) {
+    if (hash === '#/walls' || hash === '#/activity' || hash === '#/help' || hash.startsWith('#/wall/')) {
       window.location.hash = '#/';
       return;
     }
