@@ -186,6 +186,7 @@ The filename stored in the content library is the **integration name** (no exten
 |--------|---------|
 | `install-service.sh` | Install as systemd service |
 | `reset-admin.js` | Emergency admin recovery |
+| `android/scripts/setup-kiosk.sh` | Android TV kiosk mode setup |
 
 ## API Endpoints (Admin User Management)
 
@@ -240,6 +241,88 @@ Available documentation libraries for deep technical questions. Use these IDs wi
 - "Socket.IO namespaces and room broadcasting examples"
 - "better-sqlite3 WAL mode configuration and backup"
 - "Express middleware error handling patterns"
+
+## Android TV Player Setup (ADB)
+
+### Prerequisites
+
+- **JDK 17**: `brew install openjdk@17`
+- **Android SDK**: `brew install --cask android-commandlinetools`
+  - `sdkmanager "platforms;android-34" "build-tools;34.0.0"`
+- **ADB**: `brew install android-platform-tools`
+- **Keystore**: `android/release-key.jks` (password: `camanchaca`)
+
+### Build APK
+
+```bash
+cd android
+export JAVA_HOME=/opt/homebrew/opt/openjdk@17
+export PATH=$JAVA_HOME/bin:$PATH
+export KEYSTORE_PASSWORD="camanchaca"
+export KEY_ALIAS="remotedisplay"
+export KEY_PASSWORD="camanchaca"
+./gradlew assembleDebug
+```
+
+Output: `android/app/build/outputs/apk/debug/app-debug.apk`
+Copied to root: `camanchaca-player.apk` (for OTA updates)
+
+### Connect to TV via ADB
+
+```bash
+# Via WiFi (TV must have USB debugging enabled)
+adb connect <TV_IP>:5555
+adb devices
+
+# Example
+adb connect 10.55.36.140:5555
+```
+
+### Install / Update APK
+
+```bash
+# First install
+adb install android/app/build/outputs/apk/debug/app-debug.apk
+
+# Update (if signature matches)
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+
+# If signature mismatch (new keystore), uninstall first:
+adb uninstall com.remotedisplay.player
+adb install android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+### Kiosk Mode Setup
+
+For dedicated Android TV boxes (e.g., ET-N0566):
+
+```bash
+cd android/scripts
+./setup-kiosk.sh
+```
+
+This disables the default launcher and sets Camanchaca Player as the home app.
+
+### Version Bump
+
+Edit `android/app/build.gradle.kts`:
+
+```kotlin
+defaultConfig {
+    versionCode = 2        // Increment for each release
+    versionName = "1.0.1"  // Human readable version
+}
+```
+
+### OTA Updates
+
+The server serves `camanchaca-player.apk` from the repo root at `/api/update/check`. The Android app checks this endpoint periodically and prompts for update when a new version is available.
+
+**Note:** `*.apk` is gitignored. The APK must be manually copied to the server after each build:
+```bash
+# On server
+/opt/tv-app-factory/camanchaca-player.apk
+```
 
 ## Deployment Checklist
 
