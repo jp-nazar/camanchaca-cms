@@ -8,17 +8,15 @@ jobs:
   deploy:
     runs-on: self-hosted
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+      - name: Deploy to /opt/camanchaca-cms
+        run: |
+          cd /opt/camanchaca-cms
+          git fetch origin main
+          git reset --hard origin/main
       
       - name: Install dependencies
         run: |
-          cd server
+          cd /opt/camanchaca-cms/server
           pnpm install
       
       - name: Restart service
