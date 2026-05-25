@@ -85,7 +85,7 @@ function renderDeviceCard(device) {
   const checked = selectedDeviceIds.has(device.id);
   return `
     <div class="device-card${checked ? ' selected' : ''}" draggable="true" data-device-id="${device.id}" data-device-name="${esc(device.name)}" onclick="window.location.hash='/device/${device.id}'">
-      <label class="device-card-select" title="Select for wall" onclick="event.stopPropagation()">
+      <label class="device-card-select" title="${t('dashboard.select_for_wall')}" onclick="event.stopPropagation()">
         <input type="checkbox" class="device-select-cb" data-device-id="${device.id}"${checked ? ' checked' : ''}>
       </label>
       <div class="device-card-preview" id="preview-${device.id}">
@@ -149,7 +149,7 @@ function renderDeviceCard(device) {
               <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
               <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
             </svg>
-            ${formatBytes(device.storage_free_mb)} free
+            ${formatBytes(device.storage_free_mb)} ${t('dashboard.storage_free')}
           </div>` : ''}
         </div>
       </div>
@@ -174,14 +174,14 @@ function renderWallCard(wall) {
         <div class="wall-card-grid" style="grid-template-columns:repeat(${wall.grid_cols},1fr);grid-template-rows:repeat(${wall.grid_rows},1fr)">${cells.join('')}</div>
         <div class="device-card-status">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
-          <span>${wall.grid_cols}×${wall.grid_rows} wall</span>
+          <span>${wall.grid_cols}×${wall.grid_rows} ${t('dashboard.wall_label')}</span>
         </div>
       </div>
       <div class="device-card-body">
         <div class="device-card-name">${esc(wall.name)}</div>
         <div class="device-card-meta">
-          <div class="meta-item">${(wall.devices || []).length} ${(wall.devices || []).length === 1 ? 'tile' : 'tiles'}</div>
-          <div class="meta-item" style="color:${onlineCount === (wall.devices || []).length ? 'var(--success)' : 'var(--text-muted)'}">${onlineCount} online</div>
+          <div class="meta-item">${(wall.devices || []).length} ${(wall.devices || []).length === 1 ? t('dashboard.tile_singular') : t('dashboard.tile_plural')}</div>
+          <div class="meta-item" style="color:${onlineCount === (wall.devices || []).length ? 'var(--success)' : 'var(--text-muted)'}">${onlineCount} ${t('dashboard.online_count_wall')}</div>
         </div>
       </div>
     </div>
@@ -256,9 +256,9 @@ export function render(container) {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px">
           <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="21"/>
         </svg>
-        Create Video Wall
+        ${t('dashboard.create_video_wall')}
       </button>
-      <button class="btn btn-sm" id="clearSelectionBtn">Clear</button>
+      <button class="btn btn-sm" id="clearSelectionBtn">${t('dashboard.clear_selection')}</button>
     </div>
     <div id="dashStats" class="dash-stats-row" style="display:flex;gap:12px;margin-bottom:16px"></div>
     <div style="display:flex;gap:12px;margin-bottom:16px;align-items:center">
@@ -423,11 +423,11 @@ function refreshSelectionBar() {
   // Need at least 2 to make a wall - surface the constraint inline so the
   // greyed-out button isn't just silently unresponsive.
   count.textContent = n < 2
-    ? `${n} display selected - pick 1 more to create a wall`
-    : `${n} displays selected`;
+    ? t('dashboard.display_selected_singular', { n })
+    : t('dashboard.display_selected_plural', { n });
   const btn = document.getElementById('createWallBtn');
   btn.disabled = n < 2;
-  btn.title = n < 2 ? 'Select at least 2 displays to create a video wall' : '';
+  btn.title = n < 2 ? t('dashboard.select_at_least_2') : '';
 }
 
 // Pick a sensible default grid for n devices: prefer near-square layouts,
@@ -448,8 +448,8 @@ function defaultGridForCount(n) {
 
 async function createWallFromSelection() {
   const ids = [...selectedDeviceIds];
-  if (ids.length < 2) { showToast('Select at least 2 displays', 'error'); return; }
-  const name = prompt('Name this video wall:', `Wall ${new Date().toLocaleString()}`);
+  if (ids.length < 2) { showToast(t('dashboard.select_at_least_2'), 'error'); return; }
+  const name = prompt(t('wall.prompt_name'), `Wall ${new Date().toLocaleString()}`);
   if (!name) return;
   const { cols, rows } = defaultGridForCount(ids.length);
   try {
@@ -463,7 +463,7 @@ async function createWallFromSelection() {
     }));
     await api.setWallDevices(wall.id, placement);
     selectedDeviceIds.clear();
-    showToast('Video wall created', 'success');
+    showToast(t('dashboard.video_wall_created'), 'success');
     window.location.hash = `#/wall/${wall.id}`;
   } catch (e) {
     showToast(e.message, 'error');
@@ -563,8 +563,8 @@ async function loadDashboard() {
       html += `
         <div class="wall-section" style="margin-bottom:24px">
           <div style="display:flex;align-items:center;margin-bottom:10px;padding:8px 12px;background:var(--bg-secondary);border-radius:8px;border-left:4px solid #8b5cf6">
-            <strong style="font-size:15px">Video Walls</strong>
-            <span style="color:var(--text-muted);font-size:12px;margin-left:10px">${walls.length} wall${walls.length === 1 ? '' : 's'}</span>
+            <strong style="font-size:15px">${t('dashboard.video_walls_title')}</strong>
+            <span style="color:var(--text-muted);font-size:12px;margin-left:10px">${walls.length} ${walls.length === 1 ? t('dashboard.wall_label') : t('dashboard.wall_label') + 's'}</span>
           </div>
           <div class="device-grid">${walls.map(renderWallCard).join('')}</div>
         </div>

@@ -149,7 +149,7 @@ async function loadDevice(deviceId, activeTab = null) {
         ${!simplified ? `
         <div class="screenshot-container">
           ${device.screenshot
-            ? `<img id="currentScreenshot" src="/api/devices/${device.id}/screenshot?t=${Date.now()}&token=${localStorage.getItem('token')}" alt="Current screen">`
+            ? `<img id="currentScreenshot" src="/api/devices/${device.id}/screenshot?t=${Date.now()}&token=${localStorage.getItem('token')}" alt="${t('device.alt_current_screen')}">`
             : `<div class="no-screenshot" id="currentScreenshot">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>

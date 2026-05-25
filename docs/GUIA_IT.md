@@ -336,6 +336,11 @@ El servidor aplica migrations automáticamente al arrancar. Si detecta una DB an
 - Soporta captura de pantalla, modo kiosk, y auto-update OTA.
 - Se conecta a `wss://tu-servidor` (el app agrega `/device` automáticamente).
 
+**Optimización de imágenes:**
+- El servidor genera variantes JPEG optimizadas para dispositivos (máx 1920×1080, calidad 95) al subir, reemplazar o refrescar contenido via integraciones. Estas se sirven a los players Android via `/api/content/:id/file`.
+- El archivo original se mantiene para el web player y descarga del admin.
+- `ImageLoader.kt` evita el downsampling por potencias de 2 que causaba pixelación al hacer upscale en pantallas de alta resolución.
+
 **Build:**
 
 ```bash
@@ -423,9 +428,10 @@ El sistema tiene un worker que refresca contenido externo (Power BI, Looker Stud
 
 1. Compara el archivo en disco byte a byte con la nueva descarga. Si es idéntico, **no hace nada** (la URL estable permite al navegador usar su cache).
 2. Si el contenido cambió, actualiza el archivo en disco (mismo filename siempre, sin timestamp).
-3. Actualiza el `published_snapshot` de los playlists que referencian ese contenido.
-4. Envía un **WebSocket push** a todas las pantallas que muestran ese contenido.
-5. Las pantallas reciben el nuevo playlist y cargan la imagen actualizada.
+3. Para imágenes, también genera una variante optimizada para dispositivos (máx 1920×1080, calidad 95) que se sirve a players Android.
+4. Actualiza el `published_snapshot` de los playlists que referencian ese contenido.
+5. Envía un **WebSocket push** a todas las pantallas que muestran ese contenido.
+6. Las pantallas reciben el nuevo playlist y cargan la imagen actualizada.
 
 **Optimización de ancho de banda:** Al mantener el filename estable, el navegador de cada TV usa `If-None-Match` (ETag). Si el archivo no cambió, el servidor responde `304 Not Modified` sin transferir la imagen. Si el worker detecta que los bytes son idénticos, ni siquiera escribe a disco ni envía WebSocket — las TVs nunca se enteran de un refresh que no trajo cambios.
 

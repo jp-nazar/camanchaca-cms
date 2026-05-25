@@ -126,6 +126,7 @@ Located in `android/` — Kotlin app with ExoPlayer.
 - Remote touch injection (`TouchInjector.kt`)
 - Content caching (`ContentCache.kt`)
 - Telemetry reporting (`DeviceInfo.kt`)
+- **Image optimization fix**: `ImageLoader.kt` backs off power-of-2 inSampleSize to prevent undershooting target resolution, which caused upscaling and pixelation on high-resolution photos. The server also generates device-optimized JPEG variants (max 1920×1080, quality 85) and serves them to Android players, while keeping originals for the web player and admin download.
 
 **Setup script**: `android/scripts/setup-kiosk.sh` (ADB-based kiosk setup for Android TV boxes)
 

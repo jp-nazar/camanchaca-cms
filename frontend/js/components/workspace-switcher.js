@@ -1,5 +1,6 @@
 import { api } from '../api.js';
 import { showToast } from './toast.js';
+import { t } from '../i18n.js';
 
 // Render the workspace switcher inside #workspaceSwitcher based on the
 // /api/auth/me response. Three modes:
@@ -15,7 +16,7 @@ export function renderWorkspaceSwitcher(me) {
 
   if (list.length === 0) {
     container.classList.remove('open');
-    container.innerHTML = `<span class="workspace-switcher-empty">No workspace</span>`;
+    container.innerHTML = `<span class="workspace-switcher-empty">${t('workspace.no_workspace')}</span>`;
     return;
   }
 
@@ -75,10 +76,10 @@ export function renderWorkspaceSwitcher(me) {
           localStorage.setItem('token', resp.token);
           window.location.reload();
         } else {
-          showToast('Switch returned no token', 'error');
+          showToast(t('workspace.switch_no_token'), 'error');
         }
       } catch (err) {
-        showToast(err.message || 'Failed to switch workspace', 'error');
+        showToast(err.message || t('workspace.switch_failed'), 'error');
       }
     });
   });

@@ -31,7 +31,7 @@ module.exports = {
   // huge camera photos. Keeps originals for web player / admin download.
   deviceImageMaxWidth: parseInt(process.env.DEVICE_IMAGE_MAX_WIDTH) || 1920,
   deviceImageMaxHeight: parseInt(process.env.DEVICE_IMAGE_MAX_HEIGHT) || 1080,
-  deviceImageQuality: parseInt(process.env.DEVICE_IMAGE_QUALITY) || 85,
+  deviceImageQuality: parseInt(process.env.DEVICE_IMAGE_QUALITY) || 95,
   // SSL: drop your Cloudflare Origin cert + key in certs/ folder
   // or set env vars SSL_CERT and SSL_KEY to custom paths
   sslCert: process.env.SSL_CERT || path.join(__dirname, 'certs', 'cert.pem'),

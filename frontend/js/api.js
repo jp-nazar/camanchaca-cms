@@ -1,3 +1,5 @@
+import { t } from './i18n.js';
+
 const API_BASE = '/api';
 
 function getAuthHeaders() {
@@ -16,11 +18,11 @@ async function request(url, options = {}) {
     localStorage.removeItem('user');
     window.location.hash = '#/login';
     window.location.reload();
-    throw new Error('Session expired');
+    throw new Error(t('api.session_expired'));
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || 'Request failed');
+    throw new Error(err.error || t('api.request_failed'));
   }
   return res.json();
 }
@@ -85,10 +87,10 @@ export const api = {
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve(JSON.parse(xhr.responseText));
         } else {
-          reject(new Error('Upload failed'));
+          reject(new Error(t('api.upload_failed')));
         }
       };
-      xhr.onerror = () => reject(new Error('Upload failed'));
+      xhr.onerror = () => reject(new Error(t('api.upload_failed')));
       xhr.send(formData);
     });
   },

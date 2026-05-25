@@ -1,22 +1,20 @@
 
-// Help guides + FAQ are documentation. Page chrome is translated; the body
-// content is intentionally left in English because partial machine
-// translation of multi-paragraph docs reads worse than a single source of
-// truth. A native-language docs site is the right long-term answer.
+import { t } from '../i18n.js';
+
 export function render(container) {
   container.innerHTML = `
     <div class="page-header">
-      <div><h1>${'Centro de ayuda'}</h1><div class="subtitle">${'Guías rápidas y preguntas frecuentes'}</div></div>
+      <div><h1>${t('help.title')}</h1><div class="subtitle">${t('help.subtitle')}</div></div>
     </div>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-bottom:32px">
       ${[
-        { icon: '&#128250;', title: 'Setting Up a Display', steps: ['Download the APK or open the Web Player', 'Enter your server URL', 'Note the 6-digit pairing code', 'Click "Add Display" in the dashboard and enter the code', 'Assign content to the display\'s playlist'] },
-        { icon: '&#128228;', title: 'Uploading Content', steps: ['Go to Content Library', 'Drag and drop files or click the upload area', 'Supports MP4, WebM, JPEG, PNG, GIF, WebP', 'Videos auto-detect duration and generate thumbnails', 'Use Remote URL to stream from external sources'] },
-        { icon: '&#128203;', title: 'Multi-Zone Layouts', steps: ['Go to Layouts and create a new layout or use a template', 'Drag zones to position them on the canvas', 'Resize using the corner handle', 'Assign the layout to a device in the Playlist tab', 'Each zone can show different content'] },
-        { icon: '&#128197;', title: 'Content Scheduling', steps: ['Go to Schedule and select a device', 'Click "Add Schedule" to create a time slot', 'Set start/end times and recurrence rules', 'Higher priority schedules override lower ones', 'Content auto-switches based on the schedule'] },
-        { icon: '&#128421;', title: 'Remote Control', steps: ['Go to a device\'s detail page', 'Click the "Remote Control" tab', 'Click "Start Remote" to begin streaming', 'Use the d-pad, volume, and power buttons', 'Click anywhere on the screen to simulate a tap'] },
-        { icon: '&#127916;', title: 'Video Walls', steps: ['Go to Video Walls and create a new wall', 'Set the grid size (e.g., 2x2)', 'Drag devices onto grid positions', 'Set bezel compensation if needed', 'Assign content to play across all displays'] },
+        { icon: '&#128250;', title: t('help.guide_display_title'), steps: [t('help.guide_display_1'), t('help.guide_display_2'), t('help.guide_display_3'), t('help.guide_display_4'), t('help.guide_display_5')] },
+        { icon: '&#128228;', title: t('help.guide_upload_title'), steps: [t('help.guide_upload_1'), t('help.guide_upload_2'), t('help.guide_upload_3'), t('help.guide_upload_4'), t('help.guide_upload_5')] },
+        { icon: '&#128203;', title: t('help.guide_layouts_title'), steps: [t('help.guide_layouts_1'), t('help.guide_layouts_2'), t('help.guide_layouts_3'), t('help.guide_layouts_4'), t('help.guide_layouts_5')] },
+        { icon: '&#128197;', title: t('help.guide_schedule_title'), steps: [t('help.guide_schedule_1'), t('help.guide_schedule_2'), t('help.guide_schedule_3'), t('help.guide_schedule_4'), t('help.guide_schedule_5')] },
+        { icon: '&#128421;', title: t('help.guide_remote_title'), steps: [t('help.guide_remote_1'), t('help.guide_remote_2'), t('help.guide_remote_3'), t('help.guide_remote_4'), t('help.guide_remote_5')] },
+        { icon: '&#127916;', title: t('help.guide_walls_title'), steps: [t('help.guide_walls_1'), t('help.guide_walls_2'), t('help.guide_walls_3'), t('help.guide_walls_4'), t('help.guide_walls_5')] },
       ].map(guide => `
         <div class="settings-section" style="margin:0">
           <h3 style="font-size:15px">${guide.icon} ${guide.title}</h3>

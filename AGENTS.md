@@ -129,6 +129,10 @@ If you see a login form instead:
 - Check TV logs via ADB: `adb logcat | grep -i "WebSocket\|socket\|connect"`
 - Ensure TV and server are on same network
 
+**Image pixelation on Android TV:**
+- The server auto-generates device-optimized JPEG variants (max 1920×1080, quality 95) on every image upload/replace/integration refresh. These are served to Android players via `/api/content/:id/file` while the original file remains available for web player and admin download.
+- The Android player's `ImageLoader.kt` was fixed to prevent coarse power-of-2 downsampling from undershooting the target resolution and causing upscaling/pixelation.
+
 ### 4. Admin Password Recovery (Lost Access)
 
 **Symptom:** Locked out of the admin account, `reset-admin.js` creates a NEW admin but you need the original account back.

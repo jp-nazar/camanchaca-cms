@@ -1,4 +1,5 @@
 import { api } from '../api.js';
+import { t } from '../i18n.js';
 
 // Open a rename modal for the given workspace. Uses the existing .modal-overlay
 // / .modal / .modal-header / .modal-body / .modal-footer CSS classes. On
@@ -9,8 +10,8 @@ export function openWorkspaceRenameModal(workspace) {
   overlay.innerHTML = `
     <div class="modal">
       <div class="modal-header">
-        <h3>Rename workspace</h3>
-        <button class="btn-icon" type="button" data-rename-close aria-label="Close">
+        <h3>${t('workspace.rename_title')}</h3>
+        <button class="btn-icon" type="button" data-rename-close aria-label="Cerrar">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
@@ -18,19 +19,19 @@ export function openWorkspaceRenameModal(workspace) {
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label for="renameWsName">Name</label>
+          <label for="renameWsName">${t('workspace.name_label')}</label>
           <input id="renameWsName" type="text" class="input" maxlength="80" value="${esc(workspace.name || '')}" style="width:100%">
         </div>
         <div class="form-group">
-          <label for="renameWsSlug">Slug <span style="color:var(--text-muted);font-weight:400">(optional, URL-safe)</span></label>
-          <input id="renameWsSlug" type="text" class="input" maxlength="60" value="${esc(workspace.slug || '')}" placeholder="e.g. studio-a" style="width:100%">
-          <div style="color:var(--text-muted);font-size:11px;margin-top:4px">Lowercase letters, digits, hyphens. Must be unique.</div>
+          <label for="renameWsSlug">${t('workspace.slug_label')} <span style="color:var(--text-muted);font-weight:400">(${t('workspace.slug_optional')})</span></label>
+          <input id="renameWsSlug" type="text" class="input" maxlength="60" value="${esc(workspace.slug || '')}" placeholder="${t('workspace.slug_placeholder')}" style="width:100%">
+          <div style="color:var(--text-muted);font-size:11px;margin-top:4px">${t('workspace.slug_hint')}</div>
         </div>
         <div id="renameWsError" style="display:none;color:var(--danger);font-size:13px;margin-top:8px"></div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" type="button" data-rename-close>Cancel</button>
-        <button class="btn btn-primary" type="button" id="renameWsSave">Save</button>
+        <button class="btn btn-secondary" type="button" data-rename-close>${t('workspace.cancel')}</button>
+        <button class="btn btn-primary" type="button" id="renameWsSave">${t('workspace.save')}</button>
       </div>
     </div>
   `;
@@ -57,16 +58,16 @@ export function openWorkspaceRenameModal(workspace) {
     errorEl.style.display = 'none';
     const name = nameInput.value.trim();
     const slug = slugInput.value.trim();
-    if (!name) { showError('Name cannot be empty'); return; }
+    if (!name) { showError(t('workspace.name_required')); return; }
     saveBtn.disabled = true;
-    saveBtn.textContent = 'Saving...';
+    saveBtn.textContent = t('workspace.saving');
     try {
       await api.renameWorkspace(workspace.id, { name, slug });
       window.location.reload();
     } catch (err) {
       saveBtn.disabled = false;
-      saveBtn.textContent = 'Save';
-      showError(err.message || 'Rename failed');
+      saveBtn.textContent = t('workspace.save');
+      showError(err.message || t('workspace.rename_failed'));
     }
   }
   function showError(msg) {

@@ -1,6 +1,7 @@
 import { api } from '../api.js';
 import { showToast } from '../components/toast.js';
 import { esc } from '../utils.js';
+import { t } from '../i18n.js';
 
 const API = (url, opts = {}) => fetch('/api' + url, {
   headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}`, ...opts.headers },
@@ -168,13 +169,13 @@ async function renderWallEditor(container, wallId) {
     <div class="page-header" style="margin-bottom:12px">
       <h1 style="display:flex;align-items:center;gap:10px">
         <span id="wallTitleText">${esc(wall.name)}</span>
-        <button class="btn btn-sm" id="renameWallBtn" title="Rename wall" style="padding:2px 8px;font-size:12px">✎</button>
+        <button class="btn btn-sm" id="renameWallBtn" title="${t('wall.rename_wall')}" style="padding:2px 8px;font-size:12px">✎</button>
       </h1>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-sm" id="centerViewBtn" title="Re-center and fit content to the viewport">Center</button>
-        <button class="btn btn-sm" id="autoArrangeBtn" title="Lay out screens in a grid using the columns/rows/bezel below">Auto-arrange</button>
-        <button class="btn btn-sm" id="fitPlayerBtn" title="Snap the player rect to the bounding box of all screens">Fit player to screens</button>
-        <button class="btn btn-sm" id="saveLayoutBtn" disabled>Save layout</button>
+        <button class="btn btn-sm" id="centerViewBtn" title="${t('wall.center_view_title')}">${t('wall.center_view')}</button>
+        <button class="btn btn-sm" id="autoArrangeBtn" title="${t('wall.auto_arrange_title')}">Auto-arrange</button>
+        <button class="btn btn-sm" id="fitPlayerBtn" title="${t('wall.fit_player_title')}">Fit player to screens</button>
+        <button class="btn btn-sm" id="saveLayoutBtn" disabled>${t('wall.save_layout')}</button>
         <button class="btn btn-danger btn-sm" id="deleteWallBtn">${'Eliminar muro'}</button>
       </div>
     </div>
@@ -190,30 +191,30 @@ async function renderWallEditor(container, wallId) {
           <div class="form-group" style="margin:0"><label style="font-size:11px;color:var(--text-muted)">${'Filas'}</label><input type="number" id="gridRows" class="input" value="${wall.grid_rows}" min="1" max="20" style="width:70px"></div>
           <div class="form-group" style="margin:0"><label style="font-size:11px;color:var(--text-muted)">${'Bisel H (px)'}</label><input type="number" id="bezelH" class="input" value="${Math.round(wall.bezel_h_mm)}" min="0" step="1" style="width:80px"></div>
           <div class="form-group" style="margin:0"><label style="font-size:11px;color:var(--text-muted)">${'Bisel V (px)'}</label><input type="number" id="bezelV" class="input" value="${Math.round(wall.bezel_v_mm)}" min="0" step="1" style="width:80px"></div>
-          <span style="font-size:11px;color:var(--text-muted);max-width:340px">Cols/rows/bezel are used by Auto-arrange. Drag freely on the canvas to override.</span>
+          <span style="font-size:11px;color:var(--text-muted);max-width:340px">${t('wall.cols_rows_hint')}</span>
         </div>
         <div style="margin-top:16px">
-          <h3 style="font-size:14px;margin:0 0 8px">${'wall.playlist' || 'Playlist'}</h3>
+          <h3 style="font-size:14px;margin:0 0 8px">${t('wall.playlist')}</h3>
           <select id="wallPlaylist" class="input" style="width:300px;background:var(--bg-input)">
-            <option value="">${'wall.no_playlist' || 'No playlist'}</option>
-            ${(playlists || []).map(p => `<option value="${esc(p.id)}" ${p.id === wall.playlist_id ? 'selected' : ''}>${esc(p.name)}${p.status === 'draft' ? ' (draft)' : ''}</option>`).join('')}
+            <option value="">${t('wall.no_playlist')}</option>
+            ${(playlists || []).map(p => `<option value="${esc(p.id)}" ${p.id === wall.playlist_id ? 'selected' : ''}>${esc(p.name)}${p.status === 'draft' ? ' ' + t('wall.draft_suffix') : ''}</option>`).join('')}
           </select>
-          <button class="btn btn-primary btn-sm" id="setPlaylistBtn" style="margin-left:8px">${'wall.set_playlist' || 'Set Playlist'}</button>
+          <button class="btn btn-primary btn-sm" id="setPlaylistBtn" style="margin-left:8px">${t('wall.set_playlist')}</button>
         </div>
       </div>
 
       <div style="width:260px;flex-shrink:0">
         <div id="selectionPanel" class="wall-selection-panel" style="margin-bottom:14px"></div>
         <h3 style="font-size:14px;margin-bottom:6px">${'Pantallas disponibles'}</h3>
-        <p style="color:var(--text-muted);font-size:11px;margin:0 0 8px">Drag onto the canvas to add. Use the ✕ on a tile to remove.</p>
+        <p style="color:var(--text-muted);font-size:11px;margin:0 0 8px">${t('wall.drag_hint')}</p>
         <div id="availableDevices" style="min-height:60px;padding:6px;border:1px dashed var(--border);border-radius:8px"></div>
         <div class="info-card" style="margin-top:14px;padding:10px;font-size:12px;line-height:1.55">
-          <strong style="font-size:12px">How it works</strong>
+          <strong style="font-size:12px">${t('wall.how_it_works')}</strong>
           <ul style="margin:6px 0 0 14px;padding:0;color:var(--text-secondary)">
-            <li>Each rectangle is a physical screen.</li>
-            <li>The blue dashed rectangle is the player window — content plays inside this rect.</li>
-            <li>Each screen shows only the part of the player that overlaps it.</li>
-            <li>Drag corners to resize, drag the body to move.</li>
+            <li>${t('wall.how_it_works_1')}</li>
+            <li>${t('wall.how_it_works_2')}</li>
+            <li>${t('wall.how_it_works_3')}</li>
+            <li>${t('wall.how_it_works_4')}</li>
           </ul>
         </div>
       </div>
@@ -244,18 +245,18 @@ async function renderWallEditor(container, wallId) {
     if (!rect) {
       panel.innerHTML = `
         <div class="info-card" style="padding:10px;font-size:12px">
-          <strong style="font-size:12px">Fine position</strong>
-          <p style="margin:4px 0 0;color:var(--text-muted);font-size:11px">Click a tile or the player to dial in exact pixel positions.</p>
+          <strong style="font-size:12px">${t('wall.fine_position')}</strong>
+          <p style="margin:4px 0 0;color:var(--text-muted);font-size:11px">${t('wall.fine_position_hint')}</p>
         </div>`;
       return;
     }
     const isPlayer = selected.type === 'player';
-    const label = isPlayer ? 'Player rect' : (rect.device_name || 'Screen');
+    const label = isPlayer ? t('wall.player_rect') : (rect.device_name || t('wall.screen'));
     panel.innerHTML = `
       <div class="info-card" style="padding:10px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <strong style="font-size:12px">${esc(label)}</strong>
-          <button class="btn btn-sm" id="deselectBtn" style="padding:2px 8px;font-size:11px">Deselect</button>
+          <button class="btn btn-sm" id="deselectBtn" style="padding:2px 8px;font-size:11px">${t('wall.deselect')}</button>
         </div>
         <div class="wall-pos-grid">
           <label>X</label><input type="number" data-field="x" value="${Math.round(rect.x)}" step="1">
@@ -264,8 +265,8 @@ async function renderWallEditor(container, wallId) {
           <label>H</label><input type="number" data-field="h" value="${Math.round(rect.h)}" step="1" min="24">
         </div>
         <p style="margin:8px 0 0;font-size:10px;color:var(--text-muted);line-height:1.4">
-          Arrow keys nudge by 1px. Hold <kbd>Shift</kbd> for 10px.
-          Click outside any rect to deselect.
+          ${t('wall.arrow_keys_hint')}
+          ${t('wall.click_outside_hint')}
         </p>
       </div>
     `;
@@ -362,7 +363,7 @@ async function renderWallEditor(container, wallId) {
           <span style="font-size:10px;color:var(--text-muted)">${Math.round(s.w)}×${Math.round(s.h)}</span>
         </div>
       </div>
-      <button class="wall-screen-remove" title="Remove from wall">×</button>
+      <button class="wall-screen-remove" title="${t('wall.remove_from_wall')}">×</button>
       ${resizeHandlesHtml()}
     `;
     el.querySelector('.wall-screen-remove').addEventListener('click', (ev) => {
@@ -394,7 +395,7 @@ async function renderWallEditor(container, wallId) {
     setRectStyle(el, player);
     el.innerHTML = `
       <div class="wall-player-label">
-        <span style="font-weight:600">PLAYER</span>
+        <span style="font-weight:600">${t('wall.player_rect')}</span>
         <span style="font-size:10px;color:rgba(255,255,255,0.7);margin-left:8px">${Math.round(player.w)}×${Math.round(player.h)}</span>
       </div>
       ${resizeHandlesHtml()}
@@ -641,12 +642,12 @@ async function renderWallEditor(container, wallId) {
       const btn = document.getElementById('saveLayoutBtn');
       btn.disabled = true;
       btn.classList.remove('btn-primary');
-      showToast('Layout saved', 'success');
+      showToast(t('wall.layout_saved'), 'success');
     } catch (err) { showToast(err.message, 'error'); }
   });
 
   document.getElementById('renameWallBtn').addEventListener('click', async () => {
-    const newName = prompt('Wall name:', wall.name);
+    const newName = prompt(t('wall.prompt_name'), wall.name);
     if (!newName || newName === wall.name) return;
     try {
       await API(`/walls/${wallId}`, { method: 'PUT', body: JSON.stringify({ name: newName }) });
@@ -660,12 +661,12 @@ async function renderWallEditor(container, wallId) {
     try {
       await API(`/walls/${wallId}`, { method: 'PUT', body: JSON.stringify({ playlist_id: playlistId }) });
       wall.playlist_id = playlistId;
-      showToast('wall.toast.playlist_updated' || 'Playlist updated', 'success');
+      showToast(t('wall.playlist_updated'), 'success');
     } catch (err) { showToast(err.message, 'error'); }
   });
 
   document.getElementById('deleteWallBtn').addEventListener('click', async () => {
-    if (!confirm(`Delete wall "${wall.name}"? This returns all displays to ungrouped.`)) return;
+    if (!confirm(t('wall.confirm_delete', { name: wall.name }))) return;
     try {
       await API(`/walls/${wallId}`, { method: 'DELETE' });
       showToast('Muro eliminado', 'success');
