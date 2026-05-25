@@ -223,13 +223,13 @@ Use these project documents before asking general questions:
 | `docs/ARCHITECTURE.md` | High-level system overview, data flow, tech stack decisions |
 | `docs/GUIA_IT.md` | How to run, deploy, troubleshoot, and operate the system (ops guide) |
 | `AGENTS.md` (this file) | Setup commands, known issues, deployment checklist |
-| `server/contexto-camanchaca-llm.md` | Business context, reliability principles, project phases |
+| `docs/contexto-camanchaca-llm.md` | Business context, reliability principles, project phases |
 
 **When to consult each:**
 - Changing backend structure or adding features → `docs/ARCHITECTURE.md`
 - Deploying, debugging, or handing over to IT → `docs/GUIA_IT.md`
 - Fixing errors during setup or migration → `AGENTS.md` Known Issues
-- Designing new features or prioritizing reliability → `contexto-camanchaca-llm.md`
+- Designing new features or prioritizing reliability → `docs/contexto-camanchaca-llm.md`
 
 ## Context7 References
 
