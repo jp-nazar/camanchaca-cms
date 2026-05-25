@@ -191,3 +191,4 @@ cp android/app/build/outputs/apk/debug/app-debug.apk ../camanchaca-player.apk
 ## License
 
 MIT
+# Auto-deploy configured Mon May 25 11:37:30 -04 2026
