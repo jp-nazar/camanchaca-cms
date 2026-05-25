@@ -386,14 +386,22 @@ async function loadSystem() {
   try {
     const version = await fetch('/api/version').then(r => r.json());
     const token = localStorage.getItem('token');
+    const commitDisplay = version.commit ? `${version.commit} (${version.branch || 'main'})` : '—';
+    const deployedDisplay = version.deployedAt
+      ? new Date(version.deployedAt).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' })
+      : '—';
     el.innerHTML = `
       <div class="info-grid">
         <div class="info-card"><div class="info-card-label">${'Versión'}</div><div class="info-card-value small">${version.version}</div></div>
         <div class="info-card"><div class="info-card-label">${'Hash del frontend'}</div><div class="info-card-value small">${version.hash}</div></div>
+        <div class="info-card"><div class="info-card-label">${'Commit'}</div><div class="info-card-value small">${commitDisplay}</div></div>
+        <div class="info-card"><div class="info-card-label">${'Mensaje del commit'}</div><div class="info-card-value small" style="white-space:normal;line-height:1.3">${version.commitMessage || '—'}</div></div>
+        <div class="info-card"><div class="info-card-label">${'Desplegado'}</div><div class="info-card-value small">${deployedDisplay}</div></div>
       </div>
       <div style="display:flex;gap:8px;margin-top:16px">
         <a href="/api/status/backup?token=${token}" class="btn btn-secondary btn-sm" style="text-decoration:none">${'Descargar respaldo de BD'}</a>
         <a href="/api/status" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">${'Estado del servidor'}</a>
+        <a href="/api/version" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">${'Ver versión JSON'}</a>
       </div>
     `;
   } catch (err) { el.innerHTML = `<p style="color:var(--danger)">${esc(err.message)}</p>`; }
