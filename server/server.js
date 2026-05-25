@@ -5,6 +5,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const { execSync } = require('child_process');
 const config = require('./config');
 
 // Ensure upload directories exist
@@ -335,10 +336,29 @@ function updateFrontendHash() {
 updateFrontendHash();
 // Recheck every 30 seconds
 setInterval(updateFrontendHash, 30000);
+
+// Gather commit info at startup (reflects deployed version)
+let commitInfo = { hash: '', message: '', branch: '', deployedAt: '' };
+try {
+  commitInfo = {
+    hash: execSync('git rev-parse --short HEAD', { cwd: path.join(__dirname, '..'), encoding: 'utf8' }).trim(),
+    message: execSync('git log -1 --pretty=%s', { cwd: path.join(__dirname, '..'), encoding: 'utf8' }).trim(),
+    branch: execSync('git rev-parse --abbrev-ref HEAD', { cwd: path.join(__dirname, '..'), encoding: 'utf8' }).trim(),
+    deployedAt: new Date().toISOString()
+  };
+} catch (e) { /* not a git repo or git not available */ }
+
 app.get('/api/version', (req, res) => {
   let version = '1.2.0';
   try { version = fs.readFileSync(path.join(__dirname, '..', 'VERSION'), 'utf8').trim(); } catch {}
-  res.json({ hash: frontendHash, version });
+  res.json({
+    hash: frontendHash,
+    version,
+    commit: commitInfo.hash,
+    commitMessage: commitInfo.message,
+    branch: commitInfo.branch,
+    deployedAt: commitInfo.deployedAt
+  });
 });
 
 // UI configuration flags (used to simplify/hide features in the frontend)
