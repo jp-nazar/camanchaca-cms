@@ -135,6 +135,9 @@ async function fetchUrl(int, cfg) {
 }
 
 async function saveAsContent(int, buf, mimeType, ext) {
+  const stillExists = db.prepare('SELECT id FROM integrations WHERE id = ?').get(int.id);
+  if (!stillExists) return;
+
   const contentId = int.content_id || uuidv4();
   const isNew = !int.content_id;
   const filename = int.name;
@@ -202,12 +205,18 @@ async function saveAsContent(int, buf, mimeType, ext) {
 }
 
 function scheduleNext(int, intervalMin) {
+  const stillExists = db.prepare('SELECT id FROM integrations WHERE id = ?').get(int.id);
+  if (!stillExists) return;
+
   const next = Math.floor(Date.now() / 1000) + (intervalMin * 60);
   db.prepare('UPDATE integrations SET next_fetch_at = ?, status = \'success\', updated_at = strftime(\'%s\',\'now\') WHERE id = ?')
     .run(next, int.id);
 }
 
 function handleError(int, err) {
+  const stillExists = db.prepare('SELECT id FROM integrations WHERE id = ?').get(int.id);
+  if (!stillExists) return;
+
   console.error(`[integration-worker] ${int.name} (${int.id}):`, err.message);
   const next = Math.floor(Date.now() / 1000) + 300; // retry in 5 min
   db.prepare("UPDATE integrations SET status = 'error', last_error = ?, next_fetch_at = ?, updated_at = strftime('%s','now') WHERE id = ?")
