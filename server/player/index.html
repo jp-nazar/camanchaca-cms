@@ -142,6 +142,7 @@
     // playback muted).
     let userHasInteracted = false;
     let advanceTimer = null;
+    let wasPlayingBeforeHidden = false;
     // Video wall state. wallConfig is the tile assignment from the server
     // (null when this device isn't in a wall). The leader runs the playlist
     // normally and broadcasts wall:sync every second; followers don't run
@@ -919,7 +920,9 @@
 
       // Only the leader (or single, non-walled players) records a play_start —
       // followers would just spam duplicate proof-of-play rows for the same item.
-      if (socket?.connected && (!wallConfig || wallConfig.is_leader)) {
+      // Skip logging when the page is hidden (background tab / locked phone) so
+      // that switching away doesn't inflate play time in reports.
+      if (socket?.connected && (!wallConfig || wallConfig.is_leader) && !document.hidden) {
         socket.emit('device:play-event', {
           device_id: config.deviceId,
           event: 'play_start',
@@ -1085,8 +1088,10 @@
             if (!isFollower) advanceTimer = setTimeout(nextItem, 3000);
           };
           mount.appendChild(img);
-          // Leader / single screen drives image advance; follower waits for sync
-          if (!isFollower) advanceTimer = setTimeout(nextItem, (item.duration_sec || 10) * 1000);
+          // Leader / single screen drives image advance; follower waits for sync.
+          // Don't schedule advancement while the page is hidden — background tabs
+          // on mobile can run timers sporadically and inflate play time in reports.
+          if (!isFollower && !document.hidden) advanceTimer = setTimeout(nextItem, (item.duration_sec || 10) * 1000);
         }
       }
     }
@@ -1286,7 +1291,36 @@
       } catch {}
     }
     requestWakeLock();
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') requestWakeLock(); });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        requestWakeLock();
+        // Page came back into view — resume playback if it was running before
+        // the user hid it. Start fresh so the current item plays from the top.
+        if (wasPlayingBeforeHidden) {
+          wasPlayingBeforeHidden = false;
+          playCurrentItem();
+        }
+      } else {
+        // Page hidden (user switched apps, locked phone, etc).
+        // Stop timers, pause media, and end the current play session so it
+        // doesn't keep inflating hours in the reports while backgrounded.
+        if (isPlaying) {
+          wasPlayingBeforeHidden = true;
+          if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; }
+          if (currentVideoEl) { currentVideoEl.pause(); }
+          if (playlist[currentIndex] && socket?.connected) {
+            socket.emit('device:play-event', {
+              device_id: config.deviceId,
+              event: 'play_end',
+              content_id: playlist[currentIndex].content_id,
+              content_name: playlist[currentIndex].filename,
+              completed: false,
+            });
+          }
+          isPlaying = false;
+        }
+      }
+    });
 
     // Register service worker for offline content caching
     if ('serviceWorker' in navigator) {
