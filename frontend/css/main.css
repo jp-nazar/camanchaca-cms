@@ -999,6 +999,8 @@ body {
   border-radius: var(--radius-lg);
   width: 440px;
   max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: var(--shadow);
 }
 
