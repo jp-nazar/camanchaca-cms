@@ -1251,7 +1251,7 @@ body {
 .help-tip:hover::after {
   content: attr(data-tip);
   position: absolute;
-  bottom: 100%;
+  top: 100%;
   left: 50%;
   transform: translateX(-50%);
   background: var(--bg-secondary);
@@ -1265,7 +1265,7 @@ body {
   width: 250px;
   z-index: 1000;
   box-shadow: var(--shadow);
-  margin-bottom: 6px;
+  margin-top: 6px;
   line-height: 1.4;
 }
 
