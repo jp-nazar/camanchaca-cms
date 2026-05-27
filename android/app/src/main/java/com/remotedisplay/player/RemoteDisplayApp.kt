@@ -9,7 +9,7 @@ class RemoteDisplayApp : Application() {
 
     companion object {
         const val CHANNEL_ID = "camanchaca_player_service"
-        const val CHANNEL_NAME = "Camanchaca Player Service"
+        const val CHANNEL_NAME = "Servicio de Camanchaca Player"
     }
 
     override fun onCreate() {
@@ -24,7 +24,7 @@ class RemoteDisplayApp : Application() {
                 CHANNEL_NAME,
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Camanchaca Player background service"
+                description = "Servicio en segundo plano de Camanchaca Player"
                 setShowBadge(false)
             }
             val manager = getSystemService(NotificationManager::class.java)

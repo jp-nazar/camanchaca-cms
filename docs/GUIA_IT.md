@@ -345,8 +345,27 @@ El servidor aplica migrations automáticamente al arrancar. Si detecta una DB an
 
 ```bash
 cd android
-KEYSTORE_PASSWORD="pass" KEY_ALIAS="remotedisplay" KEY_PASSWORD="pass" ./gradlew assembleDebug
+source .env
+./gradlew assembleDebug
 cp app/build/outputs/apk/debug/app-debug.apk ../camanchaca-player.apk
+```
+
+**Configuración inicial:**
+```bash
+cd android
+cp .env.example .env
+# Editar .env con las credenciales de firma (default: camanchaca / remotedisplay / camanchaca)
+```
+
+**Por qué 2 archivos APK:**
+- `app-debug.apk` — Output de Gradle (para instalar vía ADB)
+- `camanchaca-player.apk` — Copia servida por el servidor en `/download/apk` para actualizaciones OTA automáticas
+
+**Importante:** El APK debe estar **firmado** para que las actualizaciones OTA funcionen. Los TVs Android solo aceptan actualizaciones firmadas con la misma clave que el APK actualmente instalado. Si cambias el keystore o la contraseña, los TVs deben ser reinstalados vía ADB.
+
+**Java:** Si aparece "Unable to locate a Java Runtime", configurar JAVA_HOME en el entorno o agregar a `local.properties` (gitignored):
+```bash
+export JAVA_HOME=/opt/homebrew/opt/openjdk@17
 ```
 
 El servidor sirve el APK desde `/download/apk` si existe `camanchaca-player.apk` en la raíz.

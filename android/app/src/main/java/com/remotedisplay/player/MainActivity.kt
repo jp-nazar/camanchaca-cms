@@ -133,7 +133,7 @@ class MainActivity : AppCompatActivity() {
         // Setup playlist controller
         playlistController = PlaylistController(
             onItemChanged = { item -> item?.let { playItem(it) } },
-            onPlaylistEmpty = { showStatus("Waiting for content...") },
+            onPlaylistEmpty = { showStatus("Esperando contenido...") },
             onRequestRefresh = { wsService?.requestPlaylistRefresh() }
         )
 
@@ -170,7 +170,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (!playlistController.isPlaying) {
-            showStatus("Connecting to server...")
+            showStatus("Conectando al servidor...")
         }
 
         // Start and bind to WebSocket service
@@ -184,7 +184,7 @@ class MainActivity : AppCompatActivity() {
             bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
         } catch (e: Exception) {
             Log.e("MainActivity", "Failed to start service: ${e.message}")
-            showStatus("Service error: ${e.message}")
+            showStatus("Error del servicio: ${e.message}")
         }
 
         // Start auto-update checker
@@ -198,8 +198,8 @@ class MainActivity : AppCompatActivity() {
             try {
             // Check if device is suspended (trial expired / over limit)
             if (data.optBoolean("suspended", false)) {
-                val message = data.optString("message", "Account Suspended")
-                val detail = data.optString("detail", "Please upgrade your plan.")
+                val message = data.optString("message", "Cuenta Suspendida")
+                val detail = data.optString("detail", "Por favor actualiza tu plan.")
                 handler.post {
                     showStatus("$message\n$detail")
                     if (::mediaPlayer.isInitialized) mediaPlayer.stop()
@@ -431,14 +431,14 @@ class MainActivity : AppCompatActivity() {
         val file = contentCache.getCachedFile(item.contentId)
         if (file == null) {
             Log.w("MainActivity", "Content not cached: ${item.contentId}, downloading...")
-            showStatus("Downloading ${item.filename}...")
+            showStatus("Descargando ${item.filename}...")
             thread {
                 val downloaded = contentCache.downloadContent(config.serverUrl, item.contentId, item.filename, item.contentVersion)
                 handler.post {
                     if (downloaded != null) {
                         playFile(item, downloaded)
                     } else {
-                        showStatus("Download failed: ${item.filename}")
+                        showStatus("Descarga fallida: ${item.filename}")
                         handler.postDelayed({ playlistController.next() }, 3000)
                     }
                 }

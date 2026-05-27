@@ -1,0 +1,19 @@
+# Environment variables (contains secrets)
+.env
+
+# Gradle build outputs
+.gradle/
+build/
+app/build/
+
+# Local properties
+local.properties
+
+# IDE files
+.idea/
+*.iml
+.DS_Store
+
+# Keystore files (security)
+*.jks
+*.keystore

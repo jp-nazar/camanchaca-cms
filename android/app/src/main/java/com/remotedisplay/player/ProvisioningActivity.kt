@@ -80,7 +80,7 @@ class ProvisioningActivity : AppCompatActivity() {
         connectBtn.setOnClickListener {
             val url = serverUrlInput.text.toString().trim().trimEnd('/')
             if (url.isEmpty()) {
-                statusText.text = "Please enter the server URL"
+                statusText.text = "Por favor ingresa la URL del servidor"
                 return@setOnClickListener
             }
             config.serverUrl = url
@@ -117,14 +117,14 @@ class ProvisioningActivity : AppCompatActivity() {
             bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
         } catch (e: Exception) {
             Log.e("ProvisioningActivity", "Failed to start service: ${e.message}")
-            statusText.text = "Service error: ${e.message}"
+            statusText.text = "Error del servicio: ${e.message}"
         }
     }
 
     private fun connectToServer(url: String) {
         connectBtn.isEnabled = false
         progressBar.visibility = View.VISIBLE
-        statusText.text = "Connecting to server..."
+        statusText.text = "Conectando al servidor..."
 
         wsService?.connect(url)
     }
@@ -135,14 +135,14 @@ class ProvisioningActivity : AppCompatActivity() {
                 progressBar.visibility = View.GONE
                 pairingSection.visibility = View.VISIBLE
                 pairingCodeText.text = wsService?.getPairingCode() ?: "------"
-                statusText.text = "Enter this code in the dashboard to pair this display"
+                statusText.text = "Ingresa este código en el panel para vincular esta pantalla"
                 connectBtn.isEnabled = false
             }
         }
 
         wsService?.onPaired = { deviceId, name ->
             runOnUiThread {
-                statusText.text = "Paired as: $name"
+                statusText.text = "Vinculado como: $name"
                 // Transition to main activity
                 val intent = Intent(this, MainActivity::class.java)
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)

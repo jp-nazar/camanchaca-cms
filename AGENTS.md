@@ -260,16 +260,28 @@ Available documentation libraries for deep technical questions. Use these IDs wi
 
 ```bash
 cd android
-export JAVA_HOME=/opt/homebrew/opt/openjdk@17
-export PATH=$JAVA_HOME/bin:$PATH
-export KEYSTORE_PASSWORD="camanchaca"
-export KEY_ALIAS="remotedisplay"
-export KEY_PASSWORD="camanchaca"
+source .env
 ./gradlew assembleDebug
+cp app/build/outputs/apk/debug/app-debug.apk ../camanchaca-player.apk
 ```
 
-Output: `android/app/build/outputs/apk/debug/app-debug.apk`
-Copied to root: `camanchaca-player.apk` (for OTA updates)
+**Setup (first time only):**
+```bash
+cd android
+cp .env.example .env
+# Edit .env with your signing credentials (default: camanchaca / remotedisplay / camanchaca)
+```
+
+**Why 2 APK files?**
+- `android/app/build/outputs/apk/debug/app-debug.apk` — Gradle's build output (used for ADB install)
+- `camanchaca-player.apk` (repo root) — Copy served by the server at `/download/apk` for OTA auto-updates
+
+**Important:** The APK must be **signed** for OTA updates to work. Android TVs will only accept updates signed with the same key as the currently installed APK. If you change the keystore or password, TVs must be reinstalled via ADB.
+
+**Java Setup:** If you get "Unable to locate a Java Runtime", set JAVA_HOME in your environment or add to `local.properties` (gitignored):
+```bash
+export JAVA_HOME=/opt/homebrew/opt/openjdk@17
+```
 
 ### Connect to TV via ADB
 

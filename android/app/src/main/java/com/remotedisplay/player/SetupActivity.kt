@@ -101,7 +101,7 @@ class SetupActivity : AppCompatActivity() {
     private fun updateStatuses() {
         // Accessibility
         val accessibilityEnabled = isAccessibilityEnabled()
-        accessibilityStatus.text = if (accessibilityEnabled) "ON" else "OFF"
+        accessibilityStatus.text = if (accessibilityEnabled) "SÍ" else "NO"
         accessibilityStatus.setTextColor(
             if (accessibilityEnabled) 0xFF22C55E.toInt() else 0xFFEF4444.toInt()
         )
@@ -111,7 +111,7 @@ class SetupActivity : AppCompatActivity() {
         val canInstall = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             packageManager.canRequestPackageInstalls()
         } else true
-        installStatus.text = if (canInstall) "ON" else "OFF"
+        installStatus.text = if (canInstall) "SÍ" else "NO"
         installStatus.setTextColor(
             if (canInstall) 0xFF22C55E.toInt() else 0xFFEF4444.toInt()
         )
@@ -122,7 +122,7 @@ class SetupActivity : AppCompatActivity() {
             val hasNotif = ContextCompat.checkSelfPermission(
                 this, Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED
-            notificationStatus.text = if (hasNotif) "ON" else "OFF"
+            notificationStatus.text = if (hasNotif) "SÍ" else "NO"
             notificationStatus.setTextColor(
                 if (hasNotif) 0xFF22C55E.toInt() else 0xFFEF4444.toInt()
             )
@@ -132,7 +132,7 @@ class SetupActivity : AppCompatActivity() {
 
         // Update continue button text
         val allGood = accessibilityEnabled && canInstall
-        continueBtn.text = if (allGood) "Continue" else "Continue Anyway"
+        continueBtn.text = if (allGood) "Continuar" else "Continuar de todas formas"
     }
 
     private fun isAccessibilityEnabled(): Boolean {

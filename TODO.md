@@ -6,6 +6,13 @@
   - [x] android/KIOSK_SETUP.md → docs/KIOSK_SETUP.md
   - [ ] README.md
 
+## Frontend Error Handling
+
+- [ ] Remove temporary `translateError()` workaround from `frontend/js/components/toast.js`
+  - Currently auto-translates browser error messages ("Failed to fetch" → "Error de conexión con el servidor")
+  - Need full error handling refactor with proper i18n support and user-friendly messages
+  - See: `frontend/js/components/toast.js` lines 1-10 (marked with `TODO` comment)
+
 ## Pending Tasks
 
 - [ ] Replace `your-server-domain.com` with actual production domain

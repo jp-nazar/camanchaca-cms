@@ -46,7 +46,7 @@ class BootReceiver : BroadcastReceiver() {
 
                 val notification = NotificationCompat.Builder(context, RemoteDisplayApp.CHANNEL_ID)
                     .setContentTitle("Camanchaca Player")
-                    .setContentText("Starting display...")
+                    .setContentText("Iniciando pantalla...")
                     .setSmallIcon(android.R.drawable.ic_media_play)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setCategory(NotificationCompat.CATEGORY_ALARM)

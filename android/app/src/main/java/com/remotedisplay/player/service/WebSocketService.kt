@@ -525,7 +525,7 @@ class WebSocketService : Service() {
 
         return NotificationCompat.Builder(this, RemoteDisplayApp.CHANNEL_ID)
             .setContentTitle("Camanchaca Player")
-            .setContentText("Display service is running")
+            .setContentText("El servicio de pantalla está activo")
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentIntent(pendingIntent)
             .setOngoing(true)

@@ -38,7 +38,7 @@ class ServerConfig(context: Context) {
         set(value) = prefs.edit().putString("device_token", value).apply()
 
     var deviceName: String
-        get() = prefs.getString("device_name", "Unnamed Display") ?: "Unnamed Display"
+        get() = prefs.getString("device_name", "Pantalla Sin Nombre") ?: "Pantalla Sin Nombre"
         set(value) = prefs.edit().putString("device_name", value).apply()
 
     val isProvisioned: Boolean
