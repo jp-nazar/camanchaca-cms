@@ -111,8 +111,14 @@ async function fetchUiConfig() {
 function applySimplifiedUi() {
   const ids = ['wallsNavItem', 'activityNavItem', 'helpNavItem'];
   ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  const integrationsLink = document.querySelector('.nav-link[data-view="integrations"]');
+  if (integrationsLink) {
+    integrationsLink.classList.add('disabled');
+    integrationsLink.setAttribute('tabindex', '-1');
+    integrationsLink.setAttribute('aria-disabled', 'true');
+  }
   const hash = window.location.hash;
-  if (['#/walls', '#/activity', '#/help'].includes(hash) || hash.startsWith('#/wall/')) {
+  if (['#/walls', '#/activity', '#/help', '#/integrations'].includes(hash) || hash.startsWith('#/wall/')) {
     window.location.hash = '#/';
   }
 }
@@ -164,8 +170,8 @@ function route() {
   // Update user info in sidebar
   updateSidebarUser();
 
-  // Redirect if in simplified mode and trying to access a hidden view
-  if (uiSimplified && (hash === '#/walls' || hash === '#/activity' || hash === '#/help' || hash.startsWith('#/wall/'))) {
+  // Redirect if in simplified mode and trying to access a hidden/disabled view
+  if (uiSimplified && (hash === '#/walls' || hash === '#/activity' || hash === '#/help' || hash === '#/integrations' || hash.startsWith('#/wall/'))) {
     window.location.hash = '#/';
     return;
   }
@@ -216,7 +222,7 @@ function route() {
     videoWall.render(app);
   } else if (hash === '#/reports') {
     currentView = reports;
-    reports.render(app);
+    reports.render(app, { uiSimplified });
   } else if (hash === '#/activity') {
     currentView = activity;
     activity.render(app);
@@ -225,7 +231,7 @@ function route() {
     help.render(app);
   } else if (hash === '#/admin') {
     currentView = admin;
-    admin.render(app);
+    admin.render(app, { uiSimplified });
   } else if (hash === '#/settings') {
     currentView = settings;
     settings.render(app, { uiSimplified });

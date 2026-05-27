@@ -27,12 +27,14 @@ export async function render(container, opts = {}) {
         <div class="form-group"><label>${'Correo electrónico'}</label><input type="email" class="input" value="${esc(user.email || '')}" disabled></div>
         <div class="form-group"><label>${'Nombre'}</label><input type="text" id="acctName" class="input" value="${esc(user.name || '')}"></div>
       </div>
+      ${opts.uiSimplified ? '' : `
       <div class="form-group" style="margin-top:12px">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
           <input type="checkbox" id="acctEmailAlerts" ${user.email_alerts ? 'checked' : ''}>
           <span>${'settings.email_alerts'}</span>
         </label>
       </div>
+      `}
       <button class="btn btn-secondary btn-sm" id="saveAcctBtn">${'Guardar perfil'}</button>
 
       ${user.auth_provider === 'local' ? `

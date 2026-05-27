@@ -4,7 +4,7 @@ import { esc } from '../utils.js';
 
 const API = (url, opts = {}) => fetch('/api' + url, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}`, ...opts.headers }, ...opts }).then(r => r.json());
 
-export async function render(container) {
+export async function render(container, opts = {}) {
   const devices = await api.getDevices();
   const today = new Date();
   const thirtyDaysAgo = new Date(today);
@@ -13,12 +13,14 @@ export async function render(container) {
   container.innerHTML = `
     <div class="page-header">
       <div><h1>${'Informes'} <span class="help-tip" data-tip="${'Análisis de reproducción. Ve qué se reprodujo, cuándo y en qué dispositivo. Filtra por rango de fechas y dispositivo. Exporta a CSV para verificación.'}">?</span></h1><div class="subtitle">${'Análisis de reproducción y disponibilidad de dispositivos'}</div></div>
+      ${opts.uiSimplified ? '' : `
       <a class="btn btn-secondary" id="exportBtn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
         ${'Exportar CSV'}
       </a>
+      `}
     </div>
 
     <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:flex-end">
@@ -42,13 +44,15 @@ export async function render(container) {
 
   document.getElementById('loadReportBtn').onclick = loadReport;
   loadReport();
-  document.getElementById('exportBtn').onclick = () => {
-    const deviceId = document.getElementById('reportDevice').value;
-    const start = document.getElementById('reportStart').value;
-    const end = document.getElementById('reportEnd').value;
-    const token = localStorage.getItem('token');
-    window.open(`/api/reports/export?device_id=${deviceId}&start=${start}&end=${end}&token=${token}`, '_blank');
-  };
+  if (!opts.uiSimplified) {
+    document.getElementById('exportBtn').onclick = () => {
+      const deviceId = document.getElementById('reportDevice').value;
+      const start = document.getElementById('reportStart').value;
+      const end = document.getElementById('reportEnd').value;
+      const token = localStorage.getItem('token');
+      window.open(`/api/reports/export?device_id=${deviceId}&start=${start}&end=${end}&token=${token}`, '_blank');
+    };
+  }
 
   async function loadReport() {
     const deviceId = document.getElementById('reportDevice').value;

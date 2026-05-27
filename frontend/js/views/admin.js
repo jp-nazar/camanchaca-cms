@@ -5,7 +5,7 @@ import { esc, isPlatformAdmin } from '../utils.js';
 const headers = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' });
 const API = (url, opts = {}) => fetch('/api' + url, { headers: headers(), ...opts }).then(r => r.json());
 
-export async function render(container) {
+export async function render(container, opts = {}) {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   if (!isPlatformAdmin(user)) {
     container.innerHTML = `<div class="empty-state"><h3>${'Acceso denegado'}</h3><p>${'Se requiere acceso de administrador de plataforma.'}</p></div>`;
@@ -97,7 +97,7 @@ export async function render(container) {
 
   loadUsers();
   loadWorkspaces();
-  loadSystem();
+  loadSystem(opts);
 
   // Create user form handlers
   document.getElementById('showCreateUserBtn')?.addEventListener('click', async () => {
@@ -381,7 +381,7 @@ async function loadWorkspaces() {
   } catch (err) { el.innerHTML = `<p style="color:var(--danger)">${esc(err.message)}</p>`; }
 }
 
-async function loadSystem() {
+async function loadSystem(opts = {}) {
   const el = document.getElementById('systemInfo');
   try {
     const version = await fetch('/api/version').then(r => r.json());
@@ -399,7 +399,7 @@ async function loadSystem() {
         <div class="info-card"><div class="info-card-label">${'Desplegado'}</div><div class="info-card-value small">${deployedDisplay}</div></div>
       </div>
       <div style="display:flex;gap:8px;margin-top:16px">
-        <a href="/api/status/backup?token=${token}" class="btn btn-secondary btn-sm" style="text-decoration:none">${'Descargar respaldo de BD'}</a>
+        ${opts.uiSimplified ? '' : `<a href="/api/status/backup?token=${token}" class="btn btn-secondary btn-sm" style="text-decoration:none">${'Descargar respaldo de BD'}</a>`}
         <a href="/api/status" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">${'Estado del servidor'}</a>
         <a href="/api/version" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">${'Ver versión JSON'}</a>
       </div>
