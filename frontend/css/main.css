@@ -133,6 +133,12 @@ body {
   color: white;
 }
 
+.nav-link.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .sidebar-footer {
   padding: 16px;
   border-top: 1px solid var(--border);
@@ -988,9 +994,11 @@ body {
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   z-index: 1000;
+  padding: 2rem 1rem;
+  overflow-y: auto;
 }
 
 .modal {
@@ -1002,6 +1010,7 @@ body {
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: var(--shadow);
+  margin: auto;
 }
 
 .modal-header {

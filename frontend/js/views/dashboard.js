@@ -778,25 +778,29 @@ function attachGroupHandlers(groupsWithDevices, allDevices) {
       const otherGroups = groupsWithDevices.filter(g => g.id !== groupId);
 
       const modal = document.createElement('div');
-      modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000';
+      modal.className = 'modal-overlay';
       modal.innerHTML = `
-        <div style="background:var(--bg-card);border-radius:12px;padding:24px;max-width:400px;width:90%;max-height:70vh;overflow-y:auto">
-          <h3 style="margin:0 0 4px">${esc(group.name)}</h3>
-          <p style="margin:0 0 16px;font-size:12px;color:var(--text-muted)">${'Marca los dispositivos para agregarlos a este grupo'}</p>
-          <div style="display:flex;flex-direction:column;gap:6px">
-            ${allDevices.filter(d => d.status !== 'provisioning').map(d => {
-              const inOther = otherGroups.filter(g => g.memberIds.has(d.id)).map(g => g.name);
-              return `
-                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;background:var(--bg-secondary)">
-                  <input type="checkbox" data-device-id="${d.id}" data-in-groups="${inOther.join(',')}" ${memberIds.has(d.id) ? 'checked' : ''}>
-                  <span class="status-dot ${d.status}" style="width:8px;height:8px"></span>
-                  <span style="font-size:13px;flex:1">${esc(d.name)}</span>
-                  ${inOther.length > 0 ? `<span style="font-size:10px;color:var(--text-muted);background:var(--bg-primary);padding:1px 6px;border-radius:8px">${esc(inOther.join(', '))}</span>` : ''}
-                </label>
-              `;
-            }).join('')}
+        <div class="modal" style="max-width:400px">
+          <div class="modal-header">
+            <h3>${esc(group.name)}</h3>
+            <p style="margin:0;font-size:12px;color:var(--text-muted)">${'Marca los dispositivos para agregarlos a este grupo'}</p>
           </div>
-          <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+          <div class="modal-body">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              ${allDevices.filter(d => d.status !== 'provisioning').map(d => {
+                const inOther = otherGroups.filter(g => g.memberIds.has(d.id)).map(g => g.name);
+                return `
+                  <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;background:var(--bg-secondary)">
+                    <input type="checkbox" data-device-id="${d.id}" data-in-groups="${inOther.join(',')}" ${memberIds.has(d.id) ? 'checked' : ''}>
+                    <span class="status-dot ${d.status}" style="width:8px;height:8px"></span>
+                    <span style="font-size:13px;flex:1">${esc(d.name)}</span>
+                    ${inOther.length > 0 ? `<span style="font-size:10px;color:var(--text-muted);background:var(--bg-primary);padding:1px 6px;border-radius:8px">${esc(inOther.join(', '))}</span>` : ''}
+                  </label>
+                `;
+              }).join('')}
+            </div>
+          </div>
+          <div class="modal-footer">
             <button class="btn" id="manageGroupClose">${'Listo'}</button>
           </div>
         </div>

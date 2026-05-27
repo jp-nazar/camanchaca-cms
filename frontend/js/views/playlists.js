@@ -114,13 +114,19 @@ async function loadPlaylists() {
 
 function showCreateModal() {
   const modal = document.createElement('div');
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:1000';
+  modal.className = 'modal-overlay';
   modal.innerHTML = `
-    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;width:400px;max-width:90vw">
-      <h3 style="margin-bottom:16px;color:var(--text-primary)">${'Nueva lista'}</h3>
-      <input type="text" id="newPlaylistName" class="input" placeholder="${'Nombre de la lista'}" style="width:100%;margin-bottom:12px" autofocus>
-      <textarea id="newPlaylistDesc" class="input" placeholder="${'Descripción (opcional)'}" style="width:100%;height:60px;resize:vertical;margin-bottom:16px"></textarea>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
+    <div class="modal" style="max-width:400px">
+      <div class="modal-header"><h3>${'Nueva lista'}</h3></div>
+      <div class="modal-body">
+        <div class="form-group">
+          <input type="text" id="newPlaylistName" class="input" placeholder="${'Nombre de la lista'}" autofocus>
+        </div>
+        <div class="form-group">
+          <textarea id="newPlaylistDesc" class="input" placeholder="${'Descripción (opcional)'}" style="height:60px;resize:vertical"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
         <button class="btn btn-secondary" id="cancelCreateBtn">${'Cancelar'}</button>
         <button class="btn btn-primary" id="confirmCreateBtn">${'Crear'}</button>
       </div>
@@ -490,16 +496,18 @@ function inlineEdit(playlist, field) {
 
 async function showAddItemModal(playlistId) {
   const modal = document.createElement('div');
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:1000';
+  modal.className = 'modal-overlay';
   modal.innerHTML = `
-    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;max-width:560px;width:95vw;max-height:80vh;display:flex;flex-direction:column">
-      <h3 style="margin-bottom:16px;color:var(--text-primary)">${'Agregar contenido a la lista'}</h3>
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <button class="btn btn-primary btn-sm" style="cursor:default;opacity:1">${'Contenido'}</button>
+    <div class="modal" style="max-width:560px;width:95vw">
+      <div class="modal-header"><h3>${'Agregar contenido a la lista'}</h3></div>
+      <div class="modal-body">
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button class="btn btn-primary btn-sm" style="cursor:default;opacity:1">${'Contenido'}</button>
+        </div>
+        <input type="text" id="addItemSearch" class="input" placeholder="${'Buscar...'}" style="width:100%;margin-bottom:12px">
+        <div id="addItemList" style="max-height:400px;overflow-y:auto"></div>
       </div>
-      <input type="text" id="addItemSearch" class="input" placeholder="${'Buscar...'}" style="width:100%;margin-bottom:12px">
-      <div id="addItemList" style="flex:1;overflow-y:auto;min-height:200px;max-height:400px"></div>
-      <div style="display:flex;justify-content:flex-end;margin-top:16px">
+      <div class="modal-footer">
         <button class="btn btn-secondary" id="closeAddModal">${'Cerrar'}</button>
       </div>
     </div>
