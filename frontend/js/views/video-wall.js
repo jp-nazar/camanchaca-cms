@@ -669,7 +669,7 @@ async function renderWallEditor(container, wallId) {
     if (!confirm(t('wall.confirm_delete', { name: wall.name }))) return;
     try {
       await API(`/walls/${wallId}`, { method: 'DELETE' });
-      showToast('Muro eliminado', 'success');
+      showToast(t('wall.toast.deleted'), 'success');
       window.location.hash = '#/walls';
     } catch (err) { showToast(err.message, 'error'); }
   });

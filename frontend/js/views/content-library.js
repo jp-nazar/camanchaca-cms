@@ -1,6 +1,7 @@
 import { api } from '../api.js';
 import { showToast } from '../components/toast.js';
 import { esc } from '../utils.js';
+import { t } from '../i18n.js';
 
 function formatFileSize(bytes) {
   if (!bytes) return '--';
@@ -101,12 +102,12 @@ export function render(container) {
     const name = document.getElementById('remoteNameInput').value.trim();
     const mimeType = document.getElementById('remoteMimeType').value;
     if (!url) {
-      showToast('Ingresa una URL', 'error');
+      showToast(t('content.error_enter_url'), 'error');
       return;
     }
     try {
       await api.addRemoteContent(url, name, mimeType);
-      showToast('Contenido remoto agregado', 'success');
+      showToast(t('content.toast.remote_added'), 'success');
       document.getElementById('remoteUrlInput').value = '';
       document.getElementById('remoteNameInput').value = '';
       loadContent();
@@ -135,7 +136,7 @@ export function render(container) {
     if (!name || !name.trim()) return;
     try {
       await api.createFolder(name.trim(), state.currentFolderId);
-      showToast('Carpeta "' + (name) + '" creada', 'success');
+      showToast(t('content.toast.folder_created_named', { name }), 'success');
       loadContent();
     } catch (err) { showToast(err.message, 'error'); }
   };
@@ -165,9 +166,9 @@ async function handleFiles(files) {
         progressFill.style.width = pct + '%';
         progressText.textContent = 'Subiendo ' + (file.name) + '... ' + (pct) + '%';
       });
-      showToast((file.name) + ' se subió correctamente', 'success');
+      showToast(t('content.toast.uploaded_named', { name: file.name }), 'success');
     } catch (err) {
-      showToast('Error al subir ' + (file.name) + ': ' + (err.message), 'error');
+      showToast(t('content.toast.upload_failed_named', { name: file.name, error: err.message }), 'error');
     }
   }
 
@@ -239,7 +240,7 @@ async function loadContent() {
         const targetFolderId = a.dataset.folderNav || null; // empty string = root
         try {
           await api.moveContent(contentId, targetFolderId);
-          showToast(targetFolderId ? 'Movido' : 'Movido a la raíz', 'success');
+          showToast(targetFolderId ? t('content.toast.moved') : t('content.toast.moved_to_root'), 'success');
           loadContent();
         } catch (err) { showToast(err.message, 'error'); }
       });
@@ -251,7 +252,7 @@ async function loadContent() {
       if (!name || !name.trim() || name === current?.name) return;
       try {
         await api.renameFolder(state.currentFolderId, name.trim());
-        showToast('Carpeta renombrada', 'success');
+        showToast(t('content.toast.folder_renamed'), 'success');
         loadContent();
       } catch (err) { showToast(err.message, 'error'); }
     };
@@ -261,7 +262,7 @@ async function loadContent() {
       try {
         const parentId = folderById.get(state.currentFolderId)?.parent_id || null;
         await api.deleteFolder(state.currentFolderId);
-        showToast('Carpeta eliminada', 'success');
+        showToast(t('content.toast.folder_deleted'), 'success');
         state.currentFolderId = parentId;
         loadContent();
       } catch (err) { showToast(err.message, 'error'); }
@@ -294,7 +295,7 @@ async function loadContent() {
         if (!contentId) return;
         try {
           await api.moveContent(contentId, card.dataset.folderId);
-          showToast('Movido', 'success');
+          showToast(t('content.toast.moved'), 'success');
           loadContent();
         } catch (err) { showToast(err.message, 'error'); }
       });
@@ -406,7 +407,7 @@ async function loadContent() {
           btn.disabled = true;
           btn.textContent = 'Eliminando...';
           await api.deleteContent(id);
-          showToast('Contenido eliminado', 'success');
+          showToast(t('content.toast.deleted'), 'success');
           loadContent();
         } catch (err) {
           showToast(err.message, 'error');
@@ -540,10 +541,10 @@ function showEditModal(contentItem, onSave) {
       }
 
       overlay.remove();
-      showToast('Contenido actualizado', 'success');
+      showToast(t('content.toast.updated'), 'success');
       if (onSave) onSave();
     } catch (err) {
-      showToast(err.message || 'Error al actualizar', 'error');
+      showToast(err.message || t('content.error_update_failed'), 'error');
     }
   };
 }

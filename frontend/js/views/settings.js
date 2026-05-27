@@ -161,7 +161,7 @@ export async function render(container, opts = {}) {
             }
             html += `<br><br>${(result.notes || []).map(n => '&bull; ' + n).join('<br>')}`;
             statusEl.innerHTML = html;
-            showToast('Datos importados correctamente', 'success');
+            showToast(t('settings.toast.import_success'), 'success');
           } else {
             statusEl.style.color = 'var(--danger)';
             statusEl.textContent = result.error || 'Error al importar';
@@ -186,7 +186,7 @@ export async function render(container, opts = {}) {
 
   document.getElementById('saveAcctBtn')?.addEventListener('click', async () => {
     const name = document.getElementById('acctName').value.trim();
-    if (!name) return showToast('El nombre no puede estar vacío', 'error');
+    if (!name) return showToast(t('settings.toast.name_required'), 'error');
     const email_alerts = !!document.getElementById('acctEmailAlerts')?.checked;
     const btn = document.getElementById('saveAcctBtn');
     btn.disabled = true;
@@ -194,7 +194,7 @@ export async function render(container, opts = {}) {
       const updated = await api.updateMe({ name, email_alerts });
       const stored = JSON.parse(localStorage.getItem('user') || '{}');
       localStorage.setItem('user', JSON.stringify({ ...stored, ...updated }));
-      showToast('Perfil guardado', 'success');
+      showToast(t('settings.toast.profile_saved'), 'success');
     } catch (err) {
       showToast(err.message, 'error');
     } finally {
@@ -206,9 +206,9 @@ export async function render(container, opts = {}) {
     const current = document.getElementById('acctCurrentPw').value;
     const next = document.getElementById('acctNewPw').value;
     const confirm = document.getElementById('acctConfirmPw').value;
-    if (!current) return showToast('Ingresa tu contraseña actual', 'error');
-    if (next.length < 8) return showToast('La nueva contraseña debe tener al menos 8 caracteres', 'error');
-    if (next !== confirm) return showToast('Las nuevas contraseñas no coinciden', 'error');
+    if (!current) return showToast(t('settings.toast.current_password_required'), 'error');
+    if (next.length < 8) return showToast(t('settings.toast.new_password_min_8'), 'error');
+    if (next !== confirm) return showToast(t('settings.toast.passwords_dont_match'), 'error');
     const btn = document.getElementById('changePwBtn');
     btn.disabled = true;
     try {
@@ -216,7 +216,7 @@ export async function render(container, opts = {}) {
       document.getElementById('acctCurrentPw').value = '';
       document.getElementById('acctNewPw').value = '';
       document.getElementById('acctConfirmPw').value = '';
-      showToast('Contraseña cambiada', 'success');
+      showToast(t('settings.toast.password_changed'), 'success');
     } catch (err) {
       showToast(err.message, 'error');
     } finally {

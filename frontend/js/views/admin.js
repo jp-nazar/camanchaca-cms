@@ -1,6 +1,7 @@
 import { api } from '../api.js';
 import { showToast } from '../components/toast.js';
 import { esc, isPlatformAdmin } from '../utils.js';
+import { t } from '../i18n.js';
 
 const headers = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' });
 const API = (url, opts = {}) => fetch('/api' + url, { headers: headers(), ...opts }).then(r => r.json());
@@ -144,7 +145,7 @@ export async function render(container, opts = {}) {
         return;
       }
 
-      showToast('Usuario creado correctamente', 'success');
+      showToast(t('admin.toast.user_created'), 'success');
       document.getElementById('newUserEmail').value = '';
       document.getElementById('newUserName').value = '';
       document.getElementById('newUserPassword').value = '';
@@ -183,7 +184,7 @@ export async function render(container, opts = {}) {
     try {
       const res = await api.createWorkspace(name);
       if (res?.id) {
-        showToast('Workspace creado correctamente', 'success');
+        showToast(t('admin.toast.workspace_created'), 'success');
         document.getElementById('newWorkspaceName').value = '';
         document.getElementById('createWorkspaceForm').style.display = 'none';
         document.getElementById('showCreateWorkspaceBtn').style.display = 'inline-flex';
@@ -260,7 +261,7 @@ async function loadUsers() {
       select.onchange = async () => {
         try {
           await API(`/auth/users/${select.dataset.roleUser}/role`, { method: 'PUT', body: JSON.stringify({ role: select.value }) });
-          showToast('Rol actualizado', 'success');
+          showToast(t('admin.toast.role_updated'), 'success');
         } catch (err) { showToast(err.message, 'error'); loadUsers(); }
       };
     });
@@ -271,10 +272,10 @@ async function loadUsers() {
         const email = btn.dataset.userEmail;
         const pw = prompt('Ingresa una nueva contraseña para ' + (email) + ' (mínimo 8 caracteres):');
         if (pw === null) return;
-        if (pw.length < 8) { showToast('La contraseña debe tener al menos 8 caracteres', 'error'); return; }
+        if (pw.length < 8) { showToast(t('admin.toast.password_min_8'), 'error'); return; }
         try {
           await api.resetUserPassword(btn.dataset.resetPwUser, pw);
-          showToast('Contraseña restablecida', 'success');
+          showToast(t('admin.toast.password_reset'), 'success');
         } catch (err) { showToast(err.message, 'error'); }
       };
     });
@@ -283,7 +284,7 @@ async function loadUsers() {
       let confirming = false;
       btn.onclick = async () => {
         if (confirming) {
-          try { await api.deleteUser(btn.dataset.deleteUser); showToast('Usuario eliminado', 'success'); loadUsers(); }
+          try { await api.deleteUser(btn.dataset.deleteUser); showToast(t('admin.toast.user_removed'), 'success'); loadUsers(); }
           catch (err) { showToast(err.message, 'error'); }
           return;
         }
@@ -300,7 +301,7 @@ async function loadUsers() {
             method: 'PUT',
             body: JSON.stringify({ workspace_id: select.dataset.wsId, role: select.value })
           });
-          showToast('Rol de workspace actualizado', 'success');
+          showToast(t('admin.toast.workspace_role_updated'), 'success');
         } catch (err) { showToast(err.message, 'error'); loadUsers(); }
       };
     });
@@ -349,7 +350,7 @@ async function loadWorkspaces() {
         if (!newName || newName.trim() === '' || newName.trim() === currentName) return;
         try {
           await api.renameWorkspace(wsId, { name: newName.trim() });
-          showToast('Workspace renombrado', 'success');
+          showToast(t('admin.toast.workspace_renamed'), 'success');
           loadWorkspaces();
         } catch (err) { showToast(err.message, 'error'); }
       };
@@ -361,7 +362,7 @@ async function loadWorkspaces() {
         if (confirming) {
           try {
             await fetch(`/api/workspaces/${btn.dataset.deleteWorkspace}`, { method: 'DELETE', headers: headers() });
-            showToast('Workspace eliminado', 'success');
+            showToast(t('admin.toast.workspace_deleted'), 'success');
             loadWorkspaces();
           } catch (err) { showToast(err.message, 'error'); }
           return;

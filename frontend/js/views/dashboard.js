@@ -264,7 +264,7 @@ export function render(container) {
     <div style="display:flex;gap:12px;margin-bottom:16px;align-items:center">
       <input type="text" id="deviceSearch" class="input" placeholder="${'Buscar pantallas...'}" style="max-width:300px">
       <select id="deviceFilter" class="input" style="width:140px;background:var(--bg-input)">
-        <option value="">${'Todos los estados'}</option>
+        <option value="">${'Todos'}</option>
         <option value="online">${'En línea'}</option>
         <option value="offline">${'Desconectado'}</option>
       </select>
@@ -302,13 +302,13 @@ export function render(container) {
     const code = document.getElementById('pairingCodeInput').value.trim();
     const name = document.getElementById('deviceNameInput').value.trim();
     if (!code || code.length !== 6) {
-      showToast('Ingresa un código de vinculación válido de 6 dígitos', 'error');
+      showToast(t('dashboard.error_pairing_code'), 'error');
       return;
     }
     try {
       await api.pairDevice(code, name || undefined);
       document.getElementById('addDeviceModal').style.display = 'none';
-      showToast('¡Pantalla vinculada con éxito!', 'success');
+      showToast(t('dashboard.toast.display_paired'), 'success');
       loadDashboard();
     } catch (err) {
       showToast(err.message, 'error');
@@ -321,7 +321,7 @@ export function render(container) {
     if (!name) return;
     try {
       await api.createGroup(name);
-      showToast('Grupo creado', 'success');
+      showToast(t('dashboard.toast.group_created'), 'success');
       loadDashboard();
     } catch (e) { showToast(e.message, 'error'); }
   });
@@ -655,7 +655,7 @@ function attachGroupHandlers(groupsWithDevices, allDevices) {
       if (!targetGroup) return;
       // Already in this group — no-op.
       if (targetGroup.memberIds.has(deviceId)) {
-        showToast((deviceName) + ' ya está en ' + (targetGroup.name), 'info');
+        showToast(t('dashboard.toast.already_in_group', { name: deviceName, group: targetGroup.name }), 'info');
         return;
       }
       // If the device is in another group, mirror the Manage modal's confirm.
@@ -665,7 +665,7 @@ function attachGroupHandlers(groupsWithDevices, allDevices) {
       }
       try {
         await api.addDeviceToGroup(groupId, deviceId);
-        showToast('Se movió ' + (deviceName) + ' a ' + (targetGroup.name), 'success');
+        showToast(t('dashboard.toast.moved_device', { name: deviceName, group: targetGroup.name }), 'success');
         loadDashboard();
       } catch (err) { showToast(err.message, 'error'); }
     });
@@ -692,7 +692,7 @@ function attachGroupHandlers(groupsWithDevices, allDevices) {
       if (memberships.length === 0) return; // already ungrouped
       try {
         await Promise.all(memberships.map(m => api.removeDeviceFromGroup(m.id, deviceId)));
-        showToast((memberships.length === 1 ? 'Se quitó ' + (deviceName) + ' de 1 grupo' : 'Se quitó ' + (deviceName) + ' de ' + (memberships.length) + ' grupos'), 'success');
+        showToast(memberships.length === 1 ? t('dashboard.toast.removed_device_one', { name: deviceName }) : t('dashboard.toast.removed_device_other', { name: deviceName, n: memberships.length }), 'success');
         loadDashboard();
       } catch (err) { showToast(err.message, 'error'); }
     });
@@ -714,7 +714,7 @@ function attachGroupHandlers(groupsWithDevices, allDevices) {
 
       try {
         const result = await api.groupAssignPlaylist(groupId, playlistId);
-        showToast((result.devices_updated === 1 ? 'Lista asignada a 1 dispositivo' : 'Lista asignada a ' + (result.devices_updated) + ' dispositivos'), 'success');
+        showToast(result.devices_updated === 1 ? t('dashboard.toast.playlist_assigned_one') : t('dashboard.toast.playlist_assigned_other', { n: result.devices_updated }), 'success');
       } catch (err) {
         showToast(err.message, 'error');
       }
@@ -760,7 +760,7 @@ function attachGroupHandlers(groupsWithDevices, allDevices) {
       if (!confirm('¿Eliminar este grupo? Los dispositivos no se verán afectados.')) return;
       try {
         await api.deleteGroup(id);
-        showToast('Grupo eliminado', 'success');
+        showToast(t('dashboard.toast.group_deleted'), 'success');
         loadDashboard();
       } catch (e) { showToast(e.message, 'error'); }
     });

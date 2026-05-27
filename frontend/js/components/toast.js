@@ -1,18 +1,4 @@
-// TODO: Remove this once we implement full error handling update.
-// This is a temporary workaround to translate common browser errors to Spanish.
-export function translateError(msg) {
-  if (!msg || typeof msg !== 'string') return msg;
-  const m = msg.toLowerCase();
-  if (m.includes('failed to fetch') || m.includes('networkerror')) {
-    return 'Error de conexión con el servidor';
-  }
-  if (m.includes('abort')) return 'Solicitud cancelada';
-  if (m.includes('timeout')) return 'Tiempo de espera agotado';
-  return msg;
-}
-
 export function showToast(message, type = 'info', duration = 4000) {
-  const displayMsg = type === 'error' ? translateError(message) : message;
   const container = document.getElementById('toastContainer');
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
@@ -24,7 +10,7 @@ export function showToast(message, type = 'info', duration = 4000) {
         type === 'error' ? '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>' :
         '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>'}
     </svg>
-    <span>${displayMsg}</span>
+    <span>${message}</span>
   `;
   container.appendChild(toast);
   setTimeout(() => {

@@ -1,5 +1,6 @@
 import { api } from '../api.js';
 import { showToast } from '../components/toast.js';
+import { t } from '../i18n.js';
 
 const API = (url, opts = {}) => fetch('/api' + url, { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}`, ...opts.headers }, ...opts }).then(r => r.json());
 
@@ -245,11 +246,11 @@ export async function render(container) {
 
   document.getElementById('deleteScheduleBtn').onclick = async () => {
     if (!editingId) return;
-    if (!confirm('schedule.confirm_delete' || 'Delete this schedule?')) return;
+    if (!confirm(t('schedule.confirm_delete'))) return;
     try {
       await API(`/schedules/${editingId}`, { method: 'DELETE' });
       document.getElementById('scheduleModal').style.display = 'none';
-      showToast('schedule.toast.deleted' || 'Schedule deleted', 'success');
+      showToast(t('schedule.toast.deleted'), 'success');
       loadCalendar();
     } catch (err) {
       showToast(err.message, 'error');
@@ -263,7 +264,7 @@ export async function render(container) {
     const endTime = document.getElementById('schedEnd').value;
 
     if (isGroup && groups.length === 0) {
-      showToast('No hay grupos disponibles. Crea uno primero.', 'error');
+      showToast(t('schedule.toast.no_groups'), 'error');
       return;
     }
 
@@ -296,7 +297,7 @@ export async function render(container) {
         await API('/schedules', { method: 'POST', body: JSON.stringify(data) });
       }
       document.getElementById('scheduleModal').style.display = 'none';
-      showToast('Horario guardado', 'success');
+      showToast(t('schedule.toast.saved'), 'success');
       loadCalendar();
     } catch (err) {
       showToast(err.message, 'error');

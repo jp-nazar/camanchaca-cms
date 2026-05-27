@@ -67,7 +67,7 @@ export default {
   'dashboard.add': 'Agregar pantalla',
   'dashboard.create_group': '+ Grupo',
   'dashboard.search': 'Buscar pantallas...',
-  'dashboard.all_status': 'Todos los estados',
+  'dashboard.all_status': 'Todos',
   'dashboard.online': 'En línea',
   'dashboard.offline': 'Desconectado',
   'dashboard.awaiting_pairing': 'Esperando vinculación',
@@ -321,6 +321,10 @@ export default {
   'device.toast.launch_sent': 'Comando de inicio enviado',
   'device.toast.update_triggered': 'Verificación de actualización iniciada',
   'device.toast.remote_started': 'Sesión de control remoto iniciada',
+  'device.toast.command_queued': 'Comando encolado',
+  'device.toast.command_no_ack': 'El dispositivo no respondió',
+  'device.toast.command_undeliverable': 'No se pudo enviar el comando',
+  'device.toast.no_content': 'Aún no hay contenido. ¡Sube algo primero!',
 
   // Settings
   'settings.title': 'Configuración',
@@ -551,6 +555,20 @@ export default {
   'admin.prompt_reset_password': 'Ingresa una nueva contraseña para {email} (mínimo 8 caracteres):',
   'admin.toast.password_min_8': 'La contraseña debe tener al menos 8 caracteres',
   'admin.toast.password_reset': 'Contraseña restablecida',
+  'admin.toast.user_created': 'Usuario creado correctamente',
+  'admin.toast.workspace_created': 'Workspace creado correctamente',
+  'admin.toast.workspace_role_updated': 'Rol de workspace actualizado',
+  'admin.toast.workspace_renamed': 'Workspace renombrado',
+  'admin.toast.workspace_deleted': 'Workspace eliminado',
+
+  // Integrations
+  'integrations.error_name_required': 'El nombre es obligatorio',
+  'integrations.error_powerbi_fields': 'Completa todos los campos de Power BI',
+  'integrations.error_url_required': 'La URL es obligatoria',
+  'integrations.toast.updated': 'Integración actualizada',
+  'integrations.toast.created': 'Integración creada',
+  'integrations.toast.refresh_requested': 'Actualización solicitada',
+  'integrations.toast.deleted': 'Integración eliminada',
 
   // Schedule
   'schedule.title': 'Horario',
@@ -602,6 +620,7 @@ export default {
   'schedule.hour_pm': 'pm',
   'schedule.toast.no_groups': 'No hay grupos disponibles. Crea uno primero.',
   'schedule.toast.saved': 'Horario guardado',
+  'schedule.confirm_delete': '¿Eliminar este horario?',
 
   // Reports
   'report.title': 'Informes',
@@ -843,6 +862,8 @@ export default {
   'workspace.no_workspace': 'Sin workspace',
   'workspace.switch_no_token': 'El cambio no devolvió token',
   'workspace.switch_failed': 'Error al cambiar de workspace',
+  'workspace.toast.create_failed': 'Error al crear workspace',
+  'workspace.toast.created': 'Workspace creado exitosamente',
 
   // API errors
   'api.session_expired': 'Sesión expirada',

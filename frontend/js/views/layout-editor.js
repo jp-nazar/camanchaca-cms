@@ -1,5 +1,6 @@
 import { api } from '../api.js';
 import { showToast } from '../components/toast.js';
+import { t } from '../i18n.js';
 
 const API = (url, opts = {}) => fetch('/api' + url, { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}`, ...opts.headers }, ...opts }).then(r => r.json());
 
@@ -61,10 +62,10 @@ async function renderList(container) {
         if (!confirm('¿Eliminar el diseño "' + (name) + '"? Esto no se puede deshacer.')) return;
         try {
           await API(`/layouts/${btn.dataset.deleteLayout}`, { method: 'DELETE' });
-          showToast('Diseño eliminado');
+          showToast(t('layout.toast.deleted'));
           renderList(container);
         } catch (err) {
-          showToast(err.message || 'Error al eliminar el diseño', 'error');
+          showToast(err.message || t('layout.toast.delete_failed'), 'error');
         }
       };
     });
@@ -287,7 +288,7 @@ async function renderEditor(container, layoutId) {
       for (const z of zones) {
         await API(`/layouts/${layoutId}/zones`, { method: 'POST', body: JSON.stringify(z) });
       }
-      showToast('Diseño guardado', 'success');
+      showToast(t('layout.toast.saved'), 'success');
       layout = await API(`/layouts/${layoutId}`);
       zones = layout.zones;
     } catch (err) {

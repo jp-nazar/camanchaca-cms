@@ -1,4 +1,5 @@
 import { showToast } from '../components/toast.js';
+import { t } from '../i18n.js';
 
 // Steps are computed lazily so translated strings refresh on language change.
 function getSteps() {
@@ -165,7 +166,7 @@ export function render(container) {
         const data = await res.json();
         if (!res.ok) { if (status) status.textContent = data.error || 'Falló la vinculación'; return; }
         pairedDeviceId = data.id;
-        showToast('¡Pantalla vinculada!', 'success');
+        showToast(t('onboarding.toast.paired'), 'success');
         currentStep++;
         renderStep();
       } catch (err) {
@@ -220,7 +221,7 @@ export function render(container) {
             } catch {}
           }
 
-          showToast('¡Contenido subido y asignado!', 'success');
+          showToast(t('onboarding.toast.content_assigned'), 'success');
           currentStep++;
           renderStep();
         } else {

@@ -544,7 +544,7 @@ async function setupActions(device) {
   // Screenshot button
   document.getElementById('screenshotBtn')?.addEventListener('click', () => {
     requestScreenshot(device.id);
-    showToast('Captura solicitada', 'info');
+    showToast(t('device.toast.screenshot_requested'), 'info');
   });
 
   // Rename
@@ -555,7 +555,7 @@ async function setupActions(device) {
         await api.updateDevice(device.id, { name });
         document.getElementById('deviceName').textContent = name;
         currentDevice.name = name;
-        showToast('Pantalla renombrada', 'success');
+        showToast(t('device.toast.renamed'), 'success');
       } catch (err) {
         showToast(err.message, 'error');
       }
@@ -584,7 +584,7 @@ async function setupActions(device) {
         orientation: document.getElementById('deviceOrientation').value,
         default_content_id: document.getElementById('deviceDefaultContent').value || null,
       });
-      showToast('Configuración guardada', 'success');
+      showToast(t('device.toast.settings_saved'), 'success');
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -598,7 +598,7 @@ async function setupActions(device) {
         devicePublishBtn.disabled = true;
         devicePublishBtn.textContent = 'Publicando...';
         await api.publishPlaylist(device.playlist_id);
-        showToast('Lista publicada — dispositivos actualizados');
+        showToast(t('device.toast.published'));
         loadDevice(device.id, 'playlist');
       } catch (err) {
         devicePublishBtn.disabled = false;
@@ -613,7 +613,7 @@ async function setupActions(device) {
       if (!confirm('¿Descartar todos los cambios no publicados y volver a la última versión publicada?')) return;
       try {
         await api.discardPlaylistDraft(device.playlist_id);
-        showToast('Cambios del borrador descartados');
+        showToast(t('device.toast.draft_discarded'));
         loadDevice(device.id, 'playlist');
       } catch (err) {
         showToast(err.message, 'error');
@@ -647,7 +647,7 @@ async function setupActions(device) {
         const assignments = await api.getAssignments(device.id);
         document.getElementById('playlistContainer').innerHTML = renderPlaylist(assignments);
         attachRemoveHandlers(device);
-        showToast('Lista cambiada');
+        showToast(t('device.toast.playlist_changed'));
       } catch (err) {
         showToast(err.message, 'error');
       }
@@ -659,12 +659,12 @@ async function setupActions(device) {
     try {
       const devices = await api.getDevices();
       const others = devices.filter(d => d.id !== device.id);
-      if (!others.length) { showToast('No hay otros dispositivos a los que copiar', 'info'); return; }
+      if (!others.length) { showToast(t('device.copy.no_other_devices'), 'info'); return; }
 
       const targetId = prompt(t('device.copy.prompt', { list: others.map((d, i) => `${i + 1}. ${d.name}`).join('\n') }));
       if (!targetId) return;
       const target = others[parseInt(targetId) - 1];
-      if (!target) { showToast('Selección no válida', 'error'); return; }
+      if (!target) { showToast(t('device.copy.invalid_selection'), 'error'); return; }
 
       const token = localStorage.getItem('token');
       const res = await fetch(`/api/assignments/device/${device.id}/copy-to/${target.id}`, {
@@ -673,7 +673,7 @@ async function setupActions(device) {
         body: JSON.stringify({ replace: false })
       });
       const data = await res.json();
-      if (res.ok) showToast('Se copiaron ' + (data.copied) + ' elementos a ' + (target.name), 'success');
+      if (res.ok) showToast(t('device.copy.toast', { n: data.copied, device: target.name }), 'success');
       else showToast(data.error, 'error');
     } catch (err) { showToast(err.message, 'error'); }
   });
@@ -688,7 +688,7 @@ async function setupActions(device) {
         deleteBtn.textContent = 'Eliminando...';
         deleteBtn.disabled = true;
         await api.deleteDevice(device.id);
-        showToast('Pantalla eliminada', 'success');
+        showToast(t('device.toast.removed'), 'success');
         window.location.hash = '/';
       } catch (err) {
         showToast(err.message, 'error');
@@ -718,9 +718,9 @@ async function setupActions(device) {
   function sendWithFeedback(type, cmdLabel, successKey) {
     sendCommand(device.id, type, {}, (ack) => {
       if (ack?.delivered) showToast(t(successKey), 'success');
-      else if (ack?.queued) showToast('device.toast.command_queued', 'warning');
-      else if (ack?.reason === 'no_ack') showToast('device.toast.command_no_ack', 'error');
-      else showToast('device.toast.command_undeliverable', 'error');
+      else if (ack?.queued) showToast(t('device.toast.command_queued'), 'warning');
+      else if (ack?.reason === 'no_ack') showToast(t('device.toast.command_no_ack'), 'error');
+      else showToast(t('device.toast.command_undeliverable'), 'error');
     });
   }
 
@@ -803,7 +803,7 @@ function setupRemote(device) {
     startBtn.style.display = 'none';
     stopBtn.style.display = '';
     overlay.style.display = 'none';
-    showToast('Sesión de control remoto iniciada', 'info');
+    showToast(t('device.toast.remote_started'), 'info');
   });
 
   stopBtn?.addEventListener('click', () => {
@@ -870,7 +870,7 @@ async function setupPlaylistActions(device) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ layout_id: layoutId || null })
       });
-      showToast(layoutId ? 'Diseño aplicado' : 'Cambiado a pantalla completa', 'success');
+      showToast(layoutId ? t('device.toast.layout_applied') : t('device.toast.switched_to_fullscreen'), 'success');
       // Reload the device page to show updated zone selectors, stay on playlist tab
       loadDevice(device.id, 'playlist');
     } catch (err) {
@@ -896,7 +896,7 @@ async function setupPlaylistActions(device) {
       }
 
       if (!content.length) {
-        showToast('Aún no hay contenido. ¡Sube algo primero!', 'error');
+        showToast(t('device.toast.no_content'), 'error');
         return;
       }
 
@@ -972,7 +972,7 @@ async function setupPlaylistActions(device) {
       modal.querySelector('#cancelAssign').onclick = () => modal.remove();
       modal.querySelector('#confirmAssign').onclick = async () => {
         if (!selectedId) {
-          showToast('Primero selecciona algo', 'error');
+          showToast(t('device.toast.select_first'), 'error');
           return;
         }
         const duration = parseInt(modal.querySelector('#assignDuration').value) || 10;
@@ -980,7 +980,7 @@ async function setupPlaylistActions(device) {
         try {
           await api.addAssignment(device.id, { content_id: selectedId, duration_sec: duration, zone_id: zoneId });
           modal.remove();
-          showToast('Agregado a la lista', 'success');
+          showToast(t('device.toast.added_to_playlist'), 'success');
           loadDevice(device.id, 'playlist');
         } catch (err) {
           showToast(err.message, 'error');
@@ -1023,7 +1023,7 @@ function attachRemoveHandlers(device) {
           select.onchange = async () => {
             try {
               await api.updateAssignment(assignmentId, { zone_id: select.value || null });
-              showToast('Zona actualizada', 'success');
+              showToast(t('device.toast.zone_updated'), 'success');
               loadDevice(device.id, 'playlist');
             } catch (err) { showToast(err.message, 'error'); }
           };
@@ -1039,7 +1039,7 @@ function attachRemoveHandlers(device) {
       const currentlyMuted = btn.dataset.muted === '1';
       try {
         await api.updateAssignment(id, { muted: !currentlyMuted });
-        showToast(currentlyMuted ? 'Audio activado' : 'Silenciado', 'success');
+        showToast(currentlyMuted ? t('device.toast.unmuted') : t('device.toast.muted'), 'success');
         loadDevice(device.id, 'playlist');
       } catch (err) { showToast(err.message, 'error'); }
     });
@@ -1052,7 +1052,7 @@ function attachRemoveHandlers(device) {
       const id = btn.dataset.removeAssignment;
       try {
         await api.deleteAssignment(id);
-        showToast('Contenido eliminado de la lista', 'success');
+        showToast(t('device.toast.removed_from_playlist'), 'success');
         loadDevice(device.id, 'playlist');
       } catch (err) {
         showToast(err.message, 'error');
@@ -1103,7 +1103,7 @@ function attachRemoveHandlers(device) {
 
       try {
         await api.reorderAssignments(device.id, newOrder);
-        showToast('Lista reordenada', 'success');
+        showToast(t('device.toast.playlist_reordered'), 'success');
         loadDevice(device.id, 'playlist');
       } catch (err) {
         showToast(err.message, 'error');

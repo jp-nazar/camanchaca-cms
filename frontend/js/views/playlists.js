@@ -1,6 +1,7 @@
 import { api } from '../api.js';
 import { showToast } from '../components/toast.js';
 import { esc } from '../utils.js';
+import { t } from '../i18n.js';
 
 function formatDate(ts) {
   if (!ts) return '--';
@@ -147,7 +148,7 @@ function showCreateModal() {
     try {
       const pl = await api.createPlaylist(name, desc);
       modal.remove();
-      showToast('Lista creada');
+      showToast(t('playlist.toast.created'));
       window.location.hash = `#/playlists/${pl.id}`;
     } catch (err) {
       showToast(err.message, 'error');
@@ -225,7 +226,7 @@ function renderDetailContent(container, playlist) {
         publishBtn.disabled = true;
         publishBtn.textContent = 'Publicando...';
         const updated = await api.publishPlaylist(playlist.id);
-        showToast('Lista publicada — dispositivos actualizados');
+        showToast(t('playlist.toast.published'));
         renderDetailContent(container, updated);
       } catch (err) {
         publishBtn.disabled = false;
@@ -240,7 +241,7 @@ function renderDetailContent(container, playlist) {
       if (!confirm('¿Descartar todos los cambios no publicados y volver a la última versión publicada?')) return;
       try {
         const updated = await api.discardPlaylistDraft(playlist.id);
-        showToast('Cambios del borrador descartados');
+        showToast(t('playlist.toast.draft_discarded'));
         renderDetailContent(container, updated);
       } catch (err) {
         showToast(err.message, 'error');
@@ -257,7 +258,7 @@ function renderDetailContent(container, playlist) {
     if (!confirm('¿Eliminar "' + (playlist.name) + '"? Esto no se puede deshacer.')) return;
     try {
       await api.deletePlaylist(playlist.id);
-      showToast('Lista eliminada');
+      showToast(t('playlist.toast.deleted'));
       window.location.hash = '#/playlists';
     } catch (err) {
       showToast(err.message, 'error');
@@ -343,7 +344,7 @@ function renderItems(items) {
         const playlist = await api.getPlaylist(currentPlaylistId);
         renderItems(playlist.items || []);
         refreshAfterMutation();
-        showToast('Elemento eliminado');
+        showToast(t('playlist.toast.item_removed'));
       } catch (err) {
         showToast(err.message, 'error');
       }

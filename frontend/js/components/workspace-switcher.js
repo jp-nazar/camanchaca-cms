@@ -95,7 +95,7 @@ export function renderWorkspaceSwitcher(me) {
       try {
         const resp = await api.createWorkspace(name.trim());
         if (resp?.id) {
-          showToast('Workspace creado exitosamente', 'success');
+          showToast(t('workspace.toast.created'), 'success');
           // Switch to the new workspace
           const switchResp = await api.switchWorkspace(resp.id);
           if (switchResp?.token) {
@@ -104,7 +104,7 @@ export function renderWorkspaceSwitcher(me) {
           }
         }
       } catch (err) {
-        showToast(err.message || 'Error al crear workspace', 'error');
+        showToast(err.message || t('workspace.toast.create_failed'), 'error');
       }
     });
   }

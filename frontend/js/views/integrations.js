@@ -176,7 +176,7 @@ function showFormModal(existing) {
 
   document.getElementById('saveFormBtn').onclick = async () => {
     const name = document.getElementById('intName').value.trim();
-    if (!name) { showToast('El nombre es obligatorio', 'error'); return; }
+    if (!name) { showToast(t('integrations.error_name_required'), 'error'); return; }
 
     const intType = document.getElementById('intType').value;
     const refresh_interval_min = parseInt(document.getElementById('intInterval').value) || 15;
@@ -190,22 +190,22 @@ function showFormModal(existing) {
       config.report_id = document.getElementById('cfgReportId').value.trim();
       config.page_name = document.getElementById('cfgPageName').value.trim() || null;
       if (!config.tenant_id || !config.client_id || !config.client_secret || !config.workspace_id || !config.report_id) {
-        showToast('Completa todos los campos de Power BI', 'error'); return;
+        showToast(t('integrations.error_powerbi_fields'), 'error'); return;
       }
     } else {
       config.url = document.getElementById('cfgUrl').value.trim();
       config.auth_type = document.getElementById('cfgAuthType').value;
       config.auth_header = document.getElementById('cfgAuthHeader')?.value || '';
-      if (!config.url) { showToast('La URL es obligatoria', 'error'); return; }
+      if (!config.url) { showToast(t('integrations.error_url_required'), 'error'); return; }
     }
 
     try {
       if (isEdit) {
         await API(`/integrations/${existing.id}`, { method: 'PUT', body: JSON.stringify({ name, integration_type: intType, config }) });
-        showToast('Integración actualizada', 'success');
+        showToast(t('integrations.toast.updated'), 'success');
       } else {
         await API('/integrations', { method: 'POST', body: JSON.stringify({ name, integration_type: intType, config }) });
-        showToast('Integración creada', 'success');
+        showToast(t('integrations.toast.created'), 'success');
       }
       modal.remove();
       loadIntegrations();
@@ -218,7 +218,7 @@ function showFormModal(existing) {
 async function triggerRefresh(id) {
   try {
     await API(`/integrations/${id}/refresh`, { method: 'POST' });
-    showToast('Actualización solicitada', 'success');
+    showToast(t('integrations.toast.refresh_requested'), 'success');
     loadIntegrations();
   } catch (err) {
     showToast(err.message, 'error');
@@ -249,7 +249,7 @@ async function confirmDelete(int) {
   if (!confirm(`¿Eliminar "${int.name}"? Esto también borrará el contenido asociado.`)) return;
   try {
     await API(`/integrations/${int.id}`, { method: 'DELETE' });
-    showToast('Integración eliminada', 'success');
+    showToast(t('integrations.toast.deleted'), 'success');
     loadIntegrations();
   } catch (err) {
     showToast(err.message, 'error');
