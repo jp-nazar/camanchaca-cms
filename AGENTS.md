@@ -278,10 +278,15 @@ cp .env.example .env
 
 **Important:** The APK must be **signed** for OTA updates to work. Android TVs will only accept updates signed with the same key as the currently installed APK. If you change the keystore or password, TVs must be reinstalled via ADB.
 
-**Java Setup:** If you get "Unable to locate a Java Runtime", set JAVA_HOME in your environment or add to `local.properties` (gitignored):
+**Java Setup:** If you get "Unable to locate a Java Runtime", set `JAVA_HOME` in `android/.env` (already gitignored). Copy `.env.example` and fill in your system's JDK 17 path:
+
 ```bash
-export JAVA_HOME=/opt/homebrew/opt/openjdk@17
+cd android
+cp .env.example .env
+# Edit .env and set JAVA_HOME to your JDK 17 path
 ```
+
+> **Note:** `source .env` before building so Gradle picks up `JAVA_HOME`.
 
 ### Connect to TV via ADB
 

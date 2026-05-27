@@ -20,10 +20,15 @@
 
 ```bash
 brew install openjdk@17
+```
 
-# Agregar al ~/.zshrc
-export JAVA_HOME=/opt/homebrew/opt/openjdk@17
-export PATH=$JAVA_HOME/bin:$PATH
+Configurar `JAVA_HOME` en `android/.env` (gitignored) para que sea específico del proyecto:
+
+```bash
+cd android
+cp .env.example .env
+# Editar .env y establecer JAVA_HOME (ej: /opt/homebrew/opt/openjdk@17)
+# Ejecutar `source .env` antes de compilar
 ```
 
 ### 2. Android SDK

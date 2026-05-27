@@ -363,10 +363,15 @@ cp .env.example .env
 
 **Importante:** El APK debe estar **firmado** para que las actualizaciones OTA funcionen. Los TVs Android solo aceptan actualizaciones firmadas con la misma clave que el APK actualmente instalado. Si cambias el keystore o la contraseña, los TVs deben ser reinstalados vía ADB.
 
-**Java:** Si aparece "Unable to locate a Java Runtime", configurar JAVA_HOME en el entorno o agregar a `local.properties` (gitignored):
+**Java:** Si aparece "Unable to locate a Java Runtime", configurar `JAVA_HOME` en `android/.env` (ya está en `.gitignore`). Copiar `.env.example` y completar con la ruta de JDK 17 de tu sistema:
+
 ```bash
-export JAVA_HOME=/opt/homebrew/opt/openjdk@17
+cd android
+cp .env.example .env
+# Editar .env y establecer JAVA_HOME con tu ruta de JDK 17
 ```
+
+> **Nota:** Ejecutar `source .env` antes de compilar para que Gradle detecte `JAVA_HOME`.
 
 El servidor sirve el APK desde `/download/apk` si existe `camanchaca-player.apk` en la raíz.
 
